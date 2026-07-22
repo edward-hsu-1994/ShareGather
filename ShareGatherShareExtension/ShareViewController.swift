@@ -265,7 +265,8 @@ final class ShareViewController: UIViewController {
         descriptionLabel.text = pendingDescription ?? URL(string: pendingValue)?.host
         descriptionLabel.font = .preferredFont(forTextStyle: .subheadline)
         descriptionLabel.textColor = .secondaryLabel
-        descriptionLabel.numberOfLines = 2
+        descriptionLabel.numberOfLines = 1
+        descriptionLabel.lineBreakMode = .byTruncatingTail
 
         let valueLabel = UILabel()
         valueLabel.text = pendingKind == .url ? pendingValue : nil
@@ -289,7 +290,7 @@ final class ShareViewController: UIViewController {
         NSLayoutConstraint.activate([
             thumbnailView.widthAnchor.constraint(equalToConstant: 64),
             thumbnailView.heightAnchor.constraint(equalToConstant: 64),
-            previewCard.heightAnchor.constraint(equalToConstant: 96)
+            previewCard.heightAnchor.constraint(equalToConstant: 112)
         ])
 
         tableView.dataSource = self
