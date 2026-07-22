@@ -66,16 +66,16 @@ public struct ContentView: View {
                         )
                     }
 
-                    ShareInstructionsCard(copy: copy) {
-                        isShowingInstructions = true
-                    }
-
                     RecentSavedItemsSection(
                         copy: copy,
                         items: savedItems,
                         onDelete: requestDelete,
                         onRecategorize: requestRecategorization
                     )
+
+                    ShareInstructionsCard(copy: copy) {
+                        isShowingInstructions = true
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
