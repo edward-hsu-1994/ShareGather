@@ -73,12 +73,27 @@ public enum SharedGatherLocalization {
         if localeIdentifier == "zh-Hans", let value = simplifiedChinese[key] {
             return value
         }
-        return String(
-            localized: String.LocalizationValue(key),
-            table: "Localizable",
-            bundle: .module,
-            locale: Locale(identifier: localeIdentifier)
-        )
+        if let value = resourceString(key: key, localeIdentifier: localeIdentifier) {
+            return value
+        }
+        return resourceString(key: key, localeIdentifier: "en") ?? key
+    }
+
+    private static func resourceString(key: String, localeIdentifier: String) -> String? {
+        guard let path = Bundle.module.path(
+            forResource: "Localizable",
+            ofType: "strings",
+            inDirectory: "\(localeIdentifier).lproj"
+        ),
+        let data = FileManager.default.contents(atPath: path),
+        let values = try? PropertyListSerialization.propertyList(
+            from: data,
+            options: [],
+            format: nil
+        ) as? [String: String] else {
+            return nil
+        }
+        return values[key]
     }
 
     public static func sharedLanguageIdentifier() -> String {

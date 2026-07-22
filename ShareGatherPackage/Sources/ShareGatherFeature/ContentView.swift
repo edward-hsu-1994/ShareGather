@@ -354,7 +354,14 @@ private enum AppLanguage: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .system:
-            return "System Default"
+            switch SharedGatherLocalization.systemLocaleIdentifier() {
+            case "zh-Hant":
+                return "System Default (繁體中文)"
+            case "zh-Hans":
+                return "System Default (简体中文)"
+            default:
+                return "System Default (English)"
+            }
         case .english:
             return "English"
         case .traditionalChinese:
