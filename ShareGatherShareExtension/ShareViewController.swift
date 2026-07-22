@@ -274,15 +274,7 @@ final class ShareViewController: UIViewController {
         valueLabel.numberOfLines = 1
         valueLabel.lineBreakMode = .byTruncatingTail
 
-        let dateLabel = UILabel()
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        dateLabel.text = formatter.string(from: Date())
-        dateLabel.font = .preferredFont(forTextStyle: .caption2)
-        dateLabel.textColor = .tertiaryLabel
-
-        let textStack = UIStackView(arrangedSubviews: [previewTitleLabel, descriptionLabel, valueLabel, dateLabel])
+        let textStack = UIStackView(arrangedSubviews: [previewTitleLabel, descriptionLabel, valueLabel])
         textStack.axis = .vertical
         textStack.spacing = 3
 
@@ -297,7 +289,7 @@ final class ShareViewController: UIViewController {
         NSLayoutConstraint.activate([
             thumbnailView.widthAnchor.constraint(equalToConstant: 64),
             thumbnailView.heightAnchor.constraint(equalToConstant: 64),
-            previewCard.heightAnchor.constraint(equalToConstant: 112)
+            previewCard.heightAnchor.constraint(equalToConstant: 96)
         ])
 
         tableView.dataSource = self
