@@ -2,12 +2,20 @@ import SwiftUI
 import UIKit
 import ShareGatherStorage
 
+private extension Notification.Name {
+    static let sharedItemCategoryDidChange = Notification.Name("ShareGather.sharedItemCategoryDidChange")
+    static let sharedItemDidDelete = Notification.Name("ShareGather.sharedItemDidDelete")
+}
+
 public struct ContentView: View {
     @AppStorage("appLanguage") private var selectedLanguage = AppLanguage.english.rawValue
     @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingInstructions = false
     @State private var isShowingCreateCategory = false
     @State private var newCategoryName = ""
+    @State private var categoryPendingRename: SharedCategory?
+    @State private var renamedCategoryName = ""
+    @State private var isShowingRenameCategory = false
     @State private var itemPendingDeletion: SharedItem?
     @State private var itemPendingRecategorization: SharedItem?
     @State private var categoryPendingDeletion: SharedCategory?
@@ -37,7 +45,10 @@ public struct ContentView: View {
                         categories: categories,
                         items: savedItems,
                         onDelete: requestDelete,
+                        onDeleteItem: deleteItem,
                         onRecategorize: requestRecategorization,
+                        onRecategorizeToCategory: recategorizeItem,
+                        onRenameCategory: requestRenameCategory,
                         onDeleteCategory: requestDeleteCategory
                     ) {
                         newCategoryName = ""
@@ -50,7 +61,7 @@ public struct ContentView: View {
                         UncategorizedItemsSection(
                             copy: copy,
                             items: savedItems,
-                            onDelete: requestDelete,
+                            onDelete: deleteItem,
                             onRecategorize: requestRecategorization
                         )
                     }
@@ -78,32 +89,31 @@ public struct ContentView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker(copy.languageTitle, selection: $selectedLanguage) {
-                            ForEach(AppLanguage.allCases) { language in
-                                Text(language.displayName)
-                                    .tag(language.rawValue)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "globe")
-                    }
-                    .accessibilityLabel(copy.languageTitle)
+                    languageMenu
                 }
             }
             .onAppear {
                 reloadLibrary()
             }
             .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active {
-                    reloadLibrary()
-                }
+                handleScenePhaseChange(newPhase)
             }
             .alert(copy.createCategoryTitle, isPresented: $isShowingCreateCategory) {
                 TextField(copy.categoryNamePlaceholder, text: $newCategoryName)
                 Button(copy.cancelTitle, role: .cancel) {}
                 Button(copy.createTitle) {
                     createCategory()
+                }
+            } message: {
+                Text(copy.categoryNameHint)
+            }
+            .alert(copy.renameCategoryTitle, isPresented: $isShowingRenameCategory) {
+                TextField(copy.categoryNamePlaceholder, text: $renamedCategoryName)
+                Button(copy.cancelTitle, role: .cancel) {
+                    categoryPendingRename = nil
+                }
+                Button(copy.saveTitle) {
+                    renamePendingCategory()
                 }
             } message: {
                 Text(copy.categoryNameHint)
@@ -118,23 +128,9 @@ public struct ContentView: View {
             } message: {
                 Text(copy.deleteConfirmationMessage)
             }
-            .confirmationDialog(
-                copy.moveToCategoryTitle,
-                isPresented: $isShowingRecategorization,
-                titleVisibility: .visible
-            ) {
-                Button(copy.uncategorizedTitle) {
-                    recategorizePendingItem(to: nil)
-                }
-
-                ForEach(categories) { category in
-                    Button(category.name) {
-                        recategorizePendingItem(to: category.id)
-                    }
-                }
-
-                Button(copy.cancelTitle, role: .cancel) {
-                    itemPendingRecategorization = nil
+            .sheet(isPresented: $isShowingRecategorization) {
+                CategorySelectionSheet(copy: copy, categories: categories) { categoryID in
+                    recategorizePendingItem(to: categoryID)
                 }
             }
             .confirmationDialog(
@@ -181,10 +177,34 @@ public struct ContentView: View {
 
     public init() {}
 
+    private var languageMenu: some View {
+        Menu {
+            Picker(copy.languageTitle, selection: $selectedLanguage) {
+                ForEach(AppLanguage.allCases) { language in
+                    languageOption(language)
+                }
+            }
+        } label: {
+            Image(systemName: "globe")
+        }
+        .accessibilityLabel(copy.languageTitle)
+    }
+
+    private func languageOption(_ language: AppLanguage) -> some View {
+        Text(language.displayName)
+            .tag(language.rawValue)
+    }
+
     private func reloadLibrary() {
         guard let store = try? SharedLibraryStore() else { return }
         savedItems = (try? store.loadItems()) ?? []
         categories = (try? store.loadCategories()) ?? []
+    }
+
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        if phase == .active {
+            reloadLibrary()
+        }
     }
 
     private func createCategory() {
@@ -192,6 +212,21 @@ public struct ContentView: View {
         _ = try? store.createCategory(named: newCategoryName)
         reloadLibrary()
         newCategoryName = ""
+    }
+
+    private func requestRenameCategory(_ category: SharedCategory) {
+        categoryPendingRename = category
+        renamedCategoryName = category.name
+        isShowingRenameCategory = true
+    }
+
+    private func renamePendingCategory() {
+        guard let category = categoryPendingRename,
+              let store = try? SharedLibraryStore() else { return }
+        _ = try? store.renameCategory(id: category.id, named: renamedCategoryName)
+        categoryPendingRename = nil
+        renamedCategoryName = ""
+        reloadLibrary()
     }
 
     private var deleteAlertBinding: Binding<Bool> {
@@ -217,6 +252,17 @@ public struct ContentView: View {
         reloadLibrary()
     }
 
+    private func deleteItem(_ item: SharedItem) {
+        guard let store = try? SharedLibraryStore() else { return }
+        do {
+            try store.deleteItem(id: item.id)
+            NotificationCenter.default.post(name: .sharedItemDidDelete, object: item.id)
+            reloadLibrary()
+        } catch {
+            return
+        }
+    }
+
     private func requestRecategorization(_ item: SharedItem) {
         itemPendingRecategorization = item
         isShowingRecategorization = true
@@ -225,10 +271,29 @@ public struct ContentView: View {
     private func recategorizePendingItem(to categoryID: UUID?) {
         guard let item = itemPendingRecategorization,
               let store = try? SharedLibraryStore() else { return }
-        _ = try? store.updateItemCategory(id: item.id, categoryID: categoryID)
+        do {
+            let updatedItem = try store.updateItemCategory(id: item.id, categoryID: categoryID)
+            NotificationCenter.default.post(
+                name: .sharedItemCategoryDidChange,
+                object: updatedItem
+            )
+        } catch {
+            return
+        }
         itemPendingRecategorization = nil
         isShowingRecategorization = false
         reloadLibrary()
+    }
+
+    private func recategorizeItem(_ item: SharedItem, to categoryID: UUID?) {
+        guard let store = try? SharedLibraryStore() else { return }
+        do {
+            let updatedItem = try store.updateItemCategory(id: item.id, categoryID: categoryID)
+            NotificationCenter.default.post(name: .sharedItemCategoryDidChange, object: updatedItem)
+            reloadLibrary()
+        } catch {
+            return
+        }
     }
 
     private var categoryPendingDeletionItemCount: Int {
@@ -355,6 +420,10 @@ private struct Copy {
         language == .english ? "Link" : "連結"
     }
 
+    var openLinkTitle: String {
+        language == .english ? "Open link" : "開啟連結"
+    }
+
     var textTitle: String {
         language == .english ? "Text" : "文字"
     }
@@ -379,8 +448,16 @@ private struct Copy {
         language == .english ? "Create a category" : "建立分類"
     }
 
+    var renameCategoryTitle: String {
+        language == .english ? "Rename category" : "重新命名分類"
+    }
+
     var createTitle: String {
         language == .english ? "Create" : "建立"
+    }
+
+    var saveTitle: String {
+        language == .english ? "Save" : "儲存"
     }
 
     var cancelTitle: String {
@@ -564,18 +641,6 @@ private struct ShareInstructionsCard: View {
                 Label(copy.shareCardTitle, systemImage: "square.and.arrow.up")
                     .font(.headline)
 
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                InstructionRow(number: 1, text: copy.instructionOne)
-                InstructionRow(number: 2, text: copy.instructionTwo)
-                InstructionRow(number: 3, text: copy.instructionThree)
             }
 
             Button(copy.viewInstructions, action: action)
@@ -660,7 +725,10 @@ private struct CategoryOverview: View {
     let categories: [SharedCategory]
     let items: [SharedItem]
     let onDelete: (SharedItem) -> Void
+    let onDeleteItem: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
+    let onRecategorizeToCategory: (SharedItem, UUID?) -> Void
+    let onRenameCategory: (SharedCategory) -> Void
     let onDeleteCategory: (SharedCategory) -> Void
     let onCreateCategory: () -> Void
 
@@ -708,8 +776,10 @@ private struct CategoryOverview: View {
                                 title: category.name,
                                 items: items.filter { $0.categoryID == category.id },
                                 categories: categories,
+                                categoryID: category.id,
                                 onDelete: onDelete,
-                                onRecategorize: onRecategorize
+                                onDeleteItem: onDeleteItem,
+                                onRecategorizeToCategory: onRecategorizeToCategory
                             )
                         } label: {
                             CategoryCard(
@@ -720,6 +790,12 @@ private struct CategoryOverview: View {
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
+                            Button {
+                                onRenameCategory(category)
+                            } label: {
+                                Label(copy.renameCategoryTitle, systemImage: "pencil")
+                            }
+
                             Button(role: .destructive) {
                                 onDeleteCategory(category)
                             } label: {
@@ -797,10 +873,34 @@ private struct CategoryItemsView: View {
     let items: [SharedItem]
     let categories: [SharedCategory]
     let onDelete: (SharedItem) -> Void
-    let onRecategorize: (SharedItem) -> Void
+    let onDeleteItem: (SharedItem) -> Void
+    @State private var displayedItems: [SharedItem]
+    let categoryID: UUID
+    let onRecategorizeToCategory: (SharedItem, UUID?) -> Void
+
+    init(
+        copy: Copy,
+        title: String,
+        items: [SharedItem],
+        categories: [SharedCategory],
+        categoryID: UUID,
+        onDelete: @escaping (SharedItem) -> Void,
+        onDeleteItem: @escaping (SharedItem) -> Void,
+        onRecategorizeToCategory: @escaping (SharedItem, UUID?) -> Void
+    ) {
+        self.copy = copy
+        self.title = title
+        self.items = items
+        self.categories = categories
+        self.categoryID = categoryID
+        self.onDelete = onDelete
+        self.onDeleteItem = onDeleteItem
+        self.onRecategorizeToCategory = onRecategorizeToCategory
+        _displayedItems = State(initialValue: items)
+    }
 
     private var sortedItems: [SharedItem] {
-        items.sorted { $0.createdAt > $1.createdAt }
+        displayedItems.sorted { $0.createdAt > $1.createdAt }
     }
 
     var body: some View {
@@ -819,11 +919,13 @@ private struct CategoryItemsView: View {
                     .background(.background, in: RoundedRectangle(cornerRadius: 16))
                 } else {
                     ForEach(sortedItems) { item in
-                        SavedItemRow(
+                        CategorizedItemRow(
                             copy: copy,
                             item: item,
+                            categories: categories,
                             onDelete: onDelete,
-                            onRecategorize: onRecategorize
+                            onDeleteItem: onDeleteItem,
+                            onRecategorize: onRecategorizeToCategory
                         )
                     }
                 }
@@ -834,6 +936,84 @@ private struct CategoryItemsView: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .onReceive(NotificationCenter.default.publisher(for: .sharedItemCategoryDidChange)) { notification in
+            guard let updatedItem = notification.object as? SharedItem,
+                  updatedItem.categoryID != categoryID else { return }
+            displayedItems.removeAll { $0.id == updatedItem.id }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sharedItemDidDelete)) { notification in
+            guard let deletedItemID = notification.object as? UUID else { return }
+            displayedItems.removeAll { $0.id == deletedItemID }
+        }
+    }
+}
+
+private struct CategorizedItemRow: View {
+    let copy: Copy
+    let item: SharedItem
+    let categories: [SharedCategory]
+    let onDelete: (SharedItem) -> Void
+    let onDeleteItem: (SharedItem) -> Void
+    let onRecategorize: (SharedItem, UUID?) -> Void
+    @State private var isShowingRecategorization = false
+    @State private var isShowingDeleteConfirmation = false
+
+    var body: some View {
+        SavedItemRow(
+            copy: copy,
+            item: item,
+            onDelete: { _ in
+                isShowingDeleteConfirmation = true
+            },
+            onRecategorize: { _ in
+                isShowingRecategorization = true
+            }
+        )
+        .alert(copy.deleteConfirmationTitle, isPresented: $isShowingDeleteConfirmation) {
+            Button(copy.cancelTitle, role: .cancel) {}
+            Button(copy.deleteTitle, role: .destructive) {
+                onDeleteItem(item)
+            }
+        } message: {
+            Text(copy.deleteConfirmationMessage)
+        }
+        .sheet(isPresented: $isShowingRecategorization) {
+            CategorySelectionSheet(copy: copy, categories: categories) { categoryID in
+                onRecategorize(item, categoryID)
+                isShowingRecategorization = false
+            }
+        }
+    }
+}
+
+private struct CategorySelectionSheet: View {
+    let copy: Copy
+    let categories: [SharedCategory]
+    let onSelect: (UUID?) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    onSelect(nil)
+                } label: {
+                    Label(copy.uncategorizedTitle, systemImage: "tray")
+                }
+
+                Section(copy.categoriesTitle) {
+                    ForEach(categories) { category in
+                        Button {
+                            onSelect(category.id)
+                        } label: {
+                            Label(category.name, systemImage: "folder")
+                        }
+                    }
+                }
+            }
+            .navigationTitle(copy.moveToCategoryTitle)
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -883,6 +1063,7 @@ private struct UncategorizedItemsSection: View {
     let items: [SharedItem]
     let onDelete: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
+    @State private var itemPendingDeletion: SharedItem?
 
     private var uncategorizedItems: [SharedItem] {
         items
@@ -891,22 +1072,46 @@ private struct UncategorizedItemsSection: View {
     }
 
     var body: some View {
-        if uncategorizedItems.isEmpty {
-            EmptyView()
-        } else {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(copy.uncategorizedCollectionTitle)
-                    .font(.headline)
+        Group {
+            if uncategorizedItems.isEmpty {
+                EmptyView()
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(copy.uncategorizedCollectionTitle)
+                        .font(.headline)
 
-                ForEach(uncategorizedItems) { item in
-                    SavedItemRow(
-                        copy: copy,
-                        item: item,
-                        onDelete: onDelete,
-                        onRecategorize: onRecategorize
-                    )
+                    ForEach(uncategorizedItems) { item in
+                        SavedItemRow(
+                            copy: copy,
+                            item: item,
+                            onDelete: { item in
+                                itemPendingDeletion = item
+                            },
+                            onRecategorize: onRecategorize
+                        )
+                    }
                 }
             }
+        }
+        .alert(copy.deleteConfirmationTitle, isPresented: Binding(
+            get: { itemPendingDeletion != nil },
+            set: { isPresented in
+                if !isPresented {
+                    itemPendingDeletion = nil
+                }
+            }
+        )) {
+            Button(copy.cancelTitle, role: .cancel) {
+                itemPendingDeletion = nil
+            }
+            Button(copy.deleteTitle, role: .destructive) {
+                if let item = itemPendingDeletion {
+                    onDelete(item)
+                }
+                itemPendingDeletion = nil
+            }
+        } message: {
+            Text(copy.deleteConfirmationMessage)
         }
     }
 }
@@ -932,21 +1137,40 @@ private struct SavedItemRow: View {
         }
     }
 
+    private var displayTitle: String {
+        if item.kind == .image {
+            return copy.savedImageTitle
+        }
+        let title = item.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? item.value : title
+    }
+
+    private var displayDescription: String? {
+        let description = item.description?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !description.isEmpty, description != displayTitle {
+            return description
+        }
+        return nil
+    }
+
     var body: some View {
         NavigationLink {
             SavedItemDetailView(copy: copy, item: item)
         } label: {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: iconName)
-                    .foregroundStyle(.blue)
-                    .frame(width: 28, height: 28)
-                    .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-                    .accessibilityHidden(true)
+                SavedItemThumbnail(item: item, fallbackIconName: iconName)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.kind == .image ? copy.savedImageTitle : item.value)
+                    Text(displayTitle)
                         .font(.subheadline)
-                        .lineLimit(3)
+                        .lineLimit(2)
+
+                    if let displayDescription {
+                        Text(displayDescription)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
 
                     Text(item.createdAt, style: .date)
                         .font(.caption)
@@ -957,6 +1181,19 @@ private struct SavedItemRow: View {
             }
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                onRecategorize(item)
+            } label: {
+                Label(copy.moveToCategoryTitle, systemImage: "folder")
+            }
+
+            Button(role: .destructive) {
+                onDelete(item)
+            } label: {
+                Label(copy.deleteTitle, systemImage: "trash")
+            }
+        }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
                 onRecategorize(item)
@@ -977,17 +1214,41 @@ private struct SavedItemRow: View {
     }
 }
 
+private struct SavedItemThumbnail: View {
+    let item: SharedItem
+    let fallbackIconName: String
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: fallbackIconName)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.blue)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.blue.opacity(0.12))
+            }
+        }
+        .frame(width: 52, height: 52)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .accessibilityHidden(true)
+        .task {
+            guard let store = try? SharedLibraryStore() else { return }
+            let data = item.kind == .image
+                ? store.imageData(for: item)
+                : store.thumbnailData(for: item)
+            image = data.flatMap(UIImage.init(data:))
+        }
+    }
+}
+
 private struct SavedItemDetailView: View {
     let copy: Copy
     let item: SharedItem
-
-    private var kindTitle: String {
-        switch item.kind {
-        case .url: return copy.linkTitle
-        case .text: return copy.textTitle
-        case .image: return copy.imageTitle
-        }
-    }
 
     private var image: UIImage? {
         guard item.kind == .image,
@@ -998,13 +1259,18 @@ private struct SavedItemDetailView: View {
         return UIImage(data: data)
     }
 
+    private var thumbnail: UIImage? {
+        guard item.kind == .url,
+              let store = try? SharedLibraryStore(),
+              let data = store.thumbnailData(for: item) else {
+            return nil
+        }
+        return UIImage(data: data)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Label(kindTitle, systemImage: iconName)
-                    .font(.headline)
-                    .foregroundStyle(.blue)
-
                 if item.kind == .image {
                     if let image {
                         Image(uiImage: image)
@@ -1016,12 +1282,38 @@ private struct SavedItemDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    Text(item.value)
-                        .font(.body)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .background(.background, in: RoundedRectangle(cornerRadius: 16))
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let thumbnail {
+                            Image(uiImage: thumbnail)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity, maxHeight: 220)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        if let title = item.title, !title.isEmpty {
+                            Text(title)
+                                .font(.headline)
+                        }
+                        if let description = item.description, !description.isEmpty {
+                            Text(description)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(item.value)
+                            .font(.body)
+                            .textSelection(.enabled)
+
+                        if item.kind == .url, let url = URL(string: item.value) {
+                            Link(destination: url) {
+                                Label(copy.openLinkTitle, systemImage: "safari")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 16))
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -1039,13 +1331,6 @@ private struct SavedItemDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var iconName: String {
-        switch item.kind {
-        case .url: return "link"
-        case .text: return "text.alignleft"
-        case .image: return "photo"
-        }
-    }
 }
 
 private struct ShareInstructionsSheet: View {

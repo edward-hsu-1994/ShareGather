@@ -1,4 +1,5 @@
 import UIKit
+import LinkPresentation
 import UniformTypeIdentifiers
 import ShareGatherStorage
 
@@ -6,8 +7,12 @@ final class ShareViewController: UIViewController {
     private var store: SharedLibraryStore?
     private var categories: [SharedCategory] = []
     private var selectedCategoryID: UUID?
+    private var isUncategorizedSelected = false
     private var pendingKind: SharedItemKind?
     private var pendingValue = ""
+    private var pendingDescription: String?
+    private var pendingTitle: String?
+    private var pendingThumbnailData: Data?
     private var pendingImageData: Data?
 
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
@@ -27,6 +32,9 @@ final class ShareViewController: UIViewController {
     private var doneTitle: String { isTraditionalChinese ? "完成" : "Done" }
     private var cancelTitle: String { isTraditionalChinese ? "取消" : "Cancel" }
     private var chooseCategoryTitle: String { isTraditionalChinese ? "選擇分類" : "Choose a category" }
+    private var chooseCategorySubtitle: String {
+        isTraditionalChinese ? "將這則分享內容保存到適合的位置" : "Save this shared item where you can find it later"
+    }
     private var createCategoryTitle: String { isTraditionalChinese ? "建立新分類" : "Create a new category" }
     private var createTitle: String { isTraditionalChinese ? "建立" : "Create" }
     private var categoryNamePlaceholder: String { isTraditionalChinese ? "分類名稱" : "Category name" }
@@ -35,6 +43,7 @@ final class ShareViewController: UIViewController {
         isTraditionalChinese ? "建立一個分類，將這則分享內容儲存到適合的位置。" : "Create a category to save this shared item in the right place."
     }
     private var newCategoryButtonTitle: String { isTraditionalChinese ? "新增分類" : "New category" }
+    private var uncategorizedTitle: String { isTraditionalChinese ? "未分類" : "Uncategorized" }
     private var selectCategoryMessage: String { isTraditionalChinese ? "請先選擇分類" : "Select a category first" }
     private var invalidCategoryMessage: String {
         isTraditionalChinese ? "分類名稱需為 1 到 50 個字元。" : "Category names must contain 1 to 50 characters."
@@ -103,16 +112,26 @@ final class ShareViewController: UIViewController {
 
     private func processSharedContent() {
         guard let extensionItem = extensionContext?.inputItems.first as? NSExtensionItem,
-              let provider = extensionItem.attachments?.first else {
+              let providers = extensionItem.attachments,
+              !providers.isEmpty else {
             showFailure()
             return
         }
 
-        if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+        pendingDescription = extensionItem.attributedContentText?.string
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let provider = providers.first(where: {
+            $0.hasItemConformingToTypeIdentifier(UTType.url.identifier)
+        }) {
             loadURL(from: provider)
-        } else if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
+        } else if let provider = providers.first(where: {
+            $0.hasItemConformingToTypeIdentifier(UTType.plainText.identifier)
+        }) {
             loadText(from: provider)
-        } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+        } else if let provider = providers.first(where: {
+            $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+        }) {
             loadImage(from: provider)
         } else {
             showFailure()
@@ -151,7 +170,8 @@ final class ShareViewController: UIViewController {
                 self.showFailure()
                 return
             }
-            self.finishPreparing(kind: .text, value: text)
+            let kind: SharedItemKind = URL(string: text)?.scheme == nil ? .text : .url
+            self.finishPreparing(kind: kind, value: text)
         }
     }
 
@@ -170,7 +190,31 @@ final class ShareViewController: UIViewController {
         DispatchQueue.main.async {
             self.pendingKind = kind
             self.pendingValue = value
-            self.loadCategories()
+            self.preparePreviewMetadata()
+        }
+    }
+
+    private func preparePreviewMetadata() {
+        guard pendingKind == .url, let url = URL(string: pendingValue) else {
+            loadCategories()
+            return
+        }
+
+        let provider = LPMetadataProvider()
+        provider.startFetchingMetadata(for: url) { [weak self] metadata, _ in
+            guard let self else { return }
+            self.pendingTitle = metadata?.title
+            let finish = { [weak self] in
+                self?.loadCategories()
+            }
+            guard let imageProvider = metadata?.imageProvider else {
+                finish()
+                return
+            }
+            imageProvider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
+                self?.pendingThumbnailData = data
+                finish()
+            }
         }
     }
 
@@ -196,17 +240,76 @@ final class ShareViewController: UIViewController {
 
         let titleLabel = UILabel()
         titleLabel.text = chooseCategoryTitle
-        titleLabel.font = .preferredFont(forTextStyle: .title2)
+        titleLabel.font = .preferredFont(forTextStyle: .largeTitle)
+        titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.textAlignment = .center
 
-        let previewLabel = UILabel()
-        previewLabel.text = itemTypeTitle
-        previewLabel.font = .preferredFont(forTextStyle: .subheadline)
-        previewLabel.textColor = .secondaryLabel
-        previewLabel.textAlignment = .center
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = chooseCategorySubtitle
+        subtitleLabel.font = .preferredFont(forTextStyle: .subheadline)
+        subtitleLabel.textColor = .secondaryLabel
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.numberOfLines = 0
+
+        let thumbnailView = UIImageView(image: pendingThumbnailData.flatMap(UIImage.init(data:)))
+        thumbnailView.image = thumbnailView.image ?? UIImage(systemName: pendingKind == .url ? "link" : "doc.text")
+        thumbnailView.tintColor = .systemBlue
+        thumbnailView.backgroundColor = .systemBlue.withAlphaComponent(0.12)
+        thumbnailView.layer.cornerRadius = 10
+        thumbnailView.clipsToBounds = true
+        thumbnailView.contentMode = pendingThumbnailData == nil ? .center : .scaleAspectFill
+        thumbnailView.translatesAutoresizingMaskIntoConstraints = false
+
+        let previewTitleLabel = UILabel()
+        previewTitleLabel.text = pendingTitle ?? (pendingKind == .image ? itemTypeTitle : pendingValue)
+        previewTitleLabel.font = .preferredFont(forTextStyle: .headline)
+        previewTitleLabel.textColor = .label
+        previewTitleLabel.numberOfLines = 2
+
+        let descriptionLabel = UILabel()
+        descriptionLabel.text = pendingDescription ?? URL(string: pendingValue)?.host
+        descriptionLabel.font = .preferredFont(forTextStyle: .subheadline)
+        descriptionLabel.textColor = .secondaryLabel
+        descriptionLabel.numberOfLines = 2
+
+        let valueLabel = UILabel()
+        valueLabel.text = pendingKind == .url ? pendingValue : nil
+        valueLabel.font = .preferredFont(forTextStyle: .caption1)
+        valueLabel.textColor = .secondaryLabel
+        valueLabel.numberOfLines = 1
+        valueLabel.lineBreakMode = .byTruncatingTail
+
+        let dateLabel = UILabel()
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        dateLabel.text = formatter.string(from: Date())
+        dateLabel.font = .preferredFont(forTextStyle: .caption2)
+        dateLabel.textColor = .tertiaryLabel
+
+        let textStack = UIStackView(arrangedSubviews: [previewTitleLabel, descriptionLabel, valueLabel, dateLabel])
+        textStack.axis = .vertical
+        textStack.spacing = 3
+
+        let previewCard = UIStackView(arrangedSubviews: [thumbnailView, textStack])
+        previewCard.axis = .horizontal
+        previewCard.alignment = .center
+        previewCard.spacing = 12
+        previewCard.isLayoutMarginsRelativeArrangement = true
+        previewCard.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
+        previewCard.backgroundColor = .secondarySystemGroupedBackground
+        previewCard.layer.cornerRadius = 16
+        NSLayoutConstraint.activate([
+            thumbnailView.widthAnchor.constraint(equalToConstant: 64),
+            thumbnailView.heightAnchor.constraint(equalToConstant: 64),
+            previewCard.heightAnchor.constraint(equalToConstant: 112)
+        ])
 
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.backgroundColor = .clear
+        tableView.separatorStyle = .none
+        tableView.rowHeight = 58
         tableView.reloadData()
         if categories.isEmpty {
             let emptyLabel = UILabel()
@@ -221,20 +324,28 @@ final class ShareViewController: UIViewController {
 
         let newCategoryButton = UIButton(type: .system)
         newCategoryButton.setTitle(newCategoryButtonTitle, for: .normal)
+        newCategoryButton.configuration = .tinted()
         newCategoryButton.addTarget(self, action: #selector(createCategory), for: .touchUpInside)
 
         saveButton.setTitle(isTraditionalChinese ? "儲存" : "Save", for: .normal)
-        saveButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+        saveButton.configuration = .filled()
+        saveButton.configuration?.cornerStyle = .capsule
         saveButton.isEnabled = selectedCategoryID != nil
         saveButton.addTarget(self, action: #selector(saveSelectedItem), for: .touchUpInside)
 
-        let buttons = UIStackView(arrangedSubviews: [newCategoryButton, saveButton, cancelButton])
-        buttons.axis = .vertical
-        buttons.spacing = 8
+        cancelButton.configuration = .plain()
+        let bottomButtons = UIStackView(arrangedSubviews: [cancelButton, saveButton])
+        bottomButtons.axis = .horizontal
+        bottomButtons.distribution = .fillEqually
+        bottomButtons.spacing = 10
 
-        let stack = UIStackView(arrangedSubviews: [titleLabel, previewLabel, tableView, buttons])
+        let actionButtons = UIStackView(arrangedSubviews: [newCategoryButton, bottomButtons])
+        actionButtons.axis = .vertical
+        actionButtons.spacing = 10
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel, previewCard, tableView, actionButtons])
         stack.axis = .vertical
-        stack.spacing = 8
+        stack.spacing = 12
 
         view.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -244,8 +355,9 @@ final class ShareViewController: UIViewController {
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             stack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            tableView.heightAnchor.constraint(greaterThanOrEqualToConstant: 180),
-            tableView.heightAnchor.constraint(lessThanOrEqualToConstant: 360)
+            tableView.heightAnchor.constraint(greaterThanOrEqualToConstant: 160),
+            tableView.heightAnchor.constraint(lessThanOrEqualToConstant: 340),
+            cancelButton.heightAnchor.constraint(equalToConstant: 40)
         ])
     }
 
@@ -262,6 +374,7 @@ final class ShareViewController: UIViewController {
                 let category = try self.store?.createCategory(named: name)
                 self.categories = try self.store?.loadCategories() ?? []
                 self.selectedCategoryID = category?.id
+                self.isUncategorizedSelected = false
                 self.renderCategorySelection()
             } catch {
                 self.showCategoryError()
@@ -277,7 +390,7 @@ final class ShareViewController: UIViewController {
     }
 
     @objc private func saveSelectedItem() {
-        guard let categoryID = selectedCategoryID else {
+        guard selectedCategoryID != nil || isUncategorizedSelected else {
             let alert = UIAlertController(title: selectCategoryMessage, message: nil, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: doneTitle, style: .default))
             present(alert, animated: true)
@@ -302,9 +415,78 @@ final class ShareViewController: UIViewController {
 
         let value = pendingValue
         let imageData = pendingImageData
+        let categoryID = selectedCategoryID
+        if pendingKind == .url, let url = URL(string: value) {
+            let metadataProvider = LPMetadataProvider()
+            metadataProvider.startFetchingMetadata(for: url) { [weak self] metadata, _ in
+                let description = self?.pendingDescription ?? url.host
+                let persist: (Data?) -> Void = { thumbnailData in
+                    self?.persistItem(
+                        store: store,
+                        kind: pendingKind,
+                        value: value,
+                        title: metadata?.title,
+                        description: description,
+                        thumbnailData: thumbnailData,
+                        originalContent: SharedOriginalContent(
+                            kind: pendingKind,
+                            value: value,
+                            sourceText: description
+                        ),
+                        categoryID: categoryID,
+                        imageData: imageData
+                    )
+                }
+                guard let imageProvider = metadata?.imageProvider else {
+                    persist(nil)
+                    return
+                }
+                imageProvider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
+                    persist(data)
+                }
+            }
+        } else {
+            persistItem(
+                store: store,
+                kind: pendingKind,
+                value: value,
+                title: nil,
+                description: pendingDescription,
+                thumbnailData: nil,
+                originalContent: SharedOriginalContent(
+                    kind: pendingKind,
+                    value: value,
+                    sourceText: pendingDescription
+                ),
+                categoryID: categoryID,
+                imageData: imageData
+            )
+        }
+    }
+
+    private func persistItem(
+        store: SharedLibraryStore,
+        kind: SharedItemKind,
+        value: String,
+        title: String?,
+        description: String?,
+        thumbnailData: Data?,
+        originalContent: SharedOriginalContent,
+        categoryID: UUID?,
+        imageData: Data?
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                _ = try store.saveItem(kind: pendingKind, value: value, categoryID: categoryID, imageData: imageData)
+                _ = try store.saveItem(
+                    kind: kind,
+                    value: value,
+                    categoryID: categoryID,
+                    imageData: imageData,
+                    title: title,
+                    description: description,
+                    thumbnailData: thumbnailData,
+                    originalContent: originalContent
+                )
                 self.showSuccess()
             } catch {
                 self.showFailure()
@@ -314,22 +496,7 @@ final class ShareViewController: UIViewController {
 
     private func showSuccess() {
         DispatchQueue.main.async {
-            self.activityIndicator.stopAnimating()
-            self.statusLabel.text = self.savedTitle
-            self.statusLabel.textColor = .label
-            self.doneButton.isHidden = false
-            self.cancelButton.isHidden = true
-            self.view.subviews.forEach { $0.removeFromSuperview() }
-            let stack = UIStackView(arrangedSubviews: [self.statusLabel, self.doneButton])
-            stack.axis = .vertical
-            stack.alignment = .center
-            stack.spacing = 16
-            self.view.addSubview(stack)
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: self.view.centerYAnchor)
-            ])
+            self.extensionContext?.completeRequest(returningItems: nil)
         }
     }
 
@@ -363,19 +530,32 @@ final class ShareViewController: UIViewController {
 
 extension ShareViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        categories.count
+        categories.count + 1
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
-        let category = categories[indexPath.row]
-        cell.textLabel?.text = category.name
-        cell.accessoryType = category.id == selectedCategoryID ? .checkmark : .none
+        if indexPath.row == 0 {
+            cell.textLabel?.text = uncategorizedTitle
+            cell.imageView?.image = UIImage(systemName: "tray")
+            cell.accessoryType = isUncategorizedSelected ? .checkmark : .none
+        } else {
+            let category = categories[indexPath.row - 1]
+            cell.textLabel?.text = category.name
+            cell.imageView?.image = UIImage(systemName: "folder")
+            cell.accessoryType = !isUncategorizedSelected && category.id == selectedCategoryID ? .checkmark : .none
+        }
         return cell
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        selectedCategoryID = categories[indexPath.row].id
+        if indexPath.row == 0 {
+            selectedCategoryID = nil
+            isUncategorizedSelected = true
+        } else {
+            selectedCategoryID = categories[indexPath.row - 1].id
+            isUncategorizedSelected = false
+        }
         tableView.reloadData()
         saveButton.isEnabled = true
     }

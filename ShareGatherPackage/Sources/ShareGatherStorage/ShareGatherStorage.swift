@@ -18,10 +18,36 @@ public struct SharedCategory: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+public struct SharedOriginalContent: Codable, Equatable, Sendable {
+    public let schemaVersion: Int
+    public let kind: SharedItemKind
+    public let value: String
+    public let sourceText: String?
+    public let assetFilename: String?
+
+    public init(
+        schemaVersion: Int = 1,
+        kind: SharedItemKind,
+        value: String,
+        sourceText: String? = nil,
+        assetFilename: String? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.kind = kind
+        self.value = value
+        self.sourceText = sourceText
+        self.assetFilename = assetFilename
+    }
+}
+
 public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
     public let kind: SharedItemKind
     public let value: String
+    public let title: String?
+    public let description: String?
+    public let thumbnailFilename: String?
+    public let originalContent: SharedOriginalContent?
     public let createdAt: Date
     public let categoryID: UUID?
 
@@ -29,18 +55,26 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         id: UUID = UUID(),
         kind: SharedItemKind,
         value: String,
+        title: String? = nil,
+        description: String? = nil,
+        thumbnailFilename: String? = nil,
+        originalContent: SharedOriginalContent? = nil,
         createdAt: Date = Date(),
         categoryID: UUID? = nil
     ) {
         self.id = id
         self.kind = kind
         self.value = value
+        self.title = title
+        self.description = description
+        self.thumbnailFilename = thumbnailFilename
+        self.originalContent = originalContent
         self.createdAt = createdAt
         self.categoryID = categoryID
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, value, createdAt, categoryID
+        case id, kind, value, title, description, thumbnailFilename, originalContent, createdAt, categoryID
     }
 
     public init(from decoder: Decoder) throws {
@@ -48,6 +82,10 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         id = try container.decode(UUID.self, forKey: .id)
         kind = try container.decode(SharedItemKind.self, forKey: .kind)
         value = try container.decode(String.self, forKey: .value)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        thumbnailFilename = try container.decodeIfPresent(String.self, forKey: .thumbnailFilename)
+        originalContent = try container.decodeIfPresent(SharedOriginalContent.self, forKey: .originalContent)
         categoryID = try container.decodeIfPresent(UUID.self, forKey: .categoryID)
         createdAt = try Self.decodeDate(from: container.superDecoder(forKey: .createdAt))
     }
@@ -57,6 +95,10 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         try container.encode(id, forKey: .id)
         try container.encode(kind, forKey: .kind)
         try container.encode(value, forKey: .value)
+        try container.encodeIfPresent(title, forKey: .title)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(thumbnailFilename, forKey: .thumbnailFilename)
+        try container.encodeIfPresent(originalContent, forKey: .originalContent)
         try container.encode(categoryID, forKey: .categoryID)
 
         let formatter = ISO8601DateFormatter()
@@ -144,6 +186,31 @@ public final class SharedLibraryStore: @unchecked Sendable {
         return category
     }
 
+    @discardableResult
+    public func renameCategory(id: UUID, named rawName: String) throws -> SharedCategory {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 50 else {
+            throw SharedLibraryError.invalidCategoryName
+        }
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        var categories = try readUnlocked([SharedCategory].self, from: categoriesURL, missingValue: [])
+        guard let index = categories.firstIndex(where: { $0.id == id }) else {
+            throw SharedLibraryError.categoryNotFound
+        }
+        if categories.contains(where: { $0.id != id && normalized($0.name) == normalized(name) }) {
+            return categories[index]
+        }
+
+        let current = categories[index]
+        let renamed = SharedCategory(id: current.id, name: name, createdAt: current.createdAt)
+        categories[index] = renamed
+        try writeUnlocked(categories, to: categoriesURL)
+        return renamed
+    }
+
     public func loadItems() throws -> [SharedItem] {
         try read([SharedItem].self, from: itemsURL, missingValue: [])
     }
@@ -151,14 +218,19 @@ public final class SharedLibraryStore: @unchecked Sendable {
     public func saveItem(
         kind: SharedItemKind,
         value: String,
-        categoryID: UUID,
-        imageData: Data? = nil
+        categoryID: UUID?,
+        imageData: Data? = nil,
+        title: String? = nil,
+        description: String? = nil,
+        thumbnailData: Data? = nil,
+        originalContent: SharedOriginalContent? = nil
     ) throws -> SharedItem {
         lock.lock()
         defer { lock.unlock() }
 
         var storedValue = value
         var imageURL: URL?
+        var thumbnailURL: URL?
         if kind == .image, let imageData {
             let imagesDirectory = baseDirectory.appendingPathComponent("Images", isDirectory: true)
             try FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
@@ -168,15 +240,41 @@ public final class SharedLibraryStore: @unchecked Sendable {
             storedValue = fileName
         }
 
+        if let thumbnailData {
+            let thumbnailsDirectory = baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true)
+            try FileManager.default.createDirectory(at: thumbnailsDirectory, withIntermediateDirectories: true)
+            let fileName = "\(UUID().uuidString).thumbnail"
+            thumbnailURL = thumbnailsDirectory.appendingPathComponent(fileName)
+            try thumbnailData.write(to: thumbnailURL!, options: .atomic)
+        }
+
         do {
             var items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
-            let item = SharedItem(kind: kind, value: storedValue, categoryID: categoryID)
+            let item = SharedItem(
+                kind: kind,
+                value: storedValue,
+                title: title,
+                description: description,
+                thumbnailFilename: thumbnailURL?.lastPathComponent,
+                originalContent: originalContent.map {
+                    SharedOriginalContent(
+                        kind: $0.kind,
+                        value: $0.value,
+                        sourceText: $0.sourceText,
+                        assetFilename: imageURL?.lastPathComponent ?? $0.assetFilename
+                    )
+                },
+                categoryID: categoryID
+            )
             items.insert(item, at: 0)
             try writeUnlocked(items, to: itemsURL)
             return item
         } catch {
             if let imageURL {
                 try? FileManager.default.removeItem(at: imageURL)
+            }
+            if let thumbnailURL {
+                try? FileManager.default.removeItem(at: thumbnailURL)
             }
             throw error
         }
@@ -204,6 +302,10 @@ public final class SharedLibraryStore: @unchecked Sendable {
             id: current.id,
             kind: current.kind,
             value: current.value,
+            title: current.title,
+            description: current.description,
+            thumbnailFilename: current.thumbnailFilename,
+            originalContent: current.originalContent,
             createdAt: current.createdAt,
             categoryID: categoryID
         )
@@ -215,6 +317,8 @@ public final class SharedLibraryStore: @unchecked Sendable {
     public func deleteItem(id: UUID) throws {
         lock.lock()
         defer { lock.unlock() }
+
+        let thumbnailsDirectory = baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true)
 
         var items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
         guard let index = items.firstIndex(where: { $0.id == id }) else {
@@ -228,6 +332,9 @@ public final class SharedLibraryStore: @unchecked Sendable {
             let imageURL = baseDirectory.appendingPathComponent("Images", isDirectory: true)
                 .appendingPathComponent(item.value)
             try? FileManager.default.removeItem(at: imageURL)
+        }
+        if let thumbnailFilename = item.thumbnailFilename {
+            try? FileManager.default.removeItem(at: thumbnailsDirectory.appendingPathComponent(thumbnailFilename))
         }
     }
 
@@ -263,6 +370,10 @@ public final class SharedLibraryStore: @unchecked Sendable {
                     id: item.id,
                     kind: item.kind,
                     value: item.value,
+                    title: item.title,
+                    description: item.description,
+                    thumbnailFilename: item.thumbnailFilename,
+                    originalContent: item.originalContent,
                     createdAt: item.createdAt,
                     categoryID: nil
                 )
@@ -278,9 +389,15 @@ public final class SharedLibraryStore: @unchecked Sendable {
 
         if case .deleteItems = itemDisposition {
             let imagesDirectory = baseDirectory.appendingPathComponent("Images", isDirectory: true)
+            let thumbnailsDirectory = baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true)
             for item in matchingItems where item.kind == .image {
                 let imageURL = imagesDirectory.appendingPathComponent(item.value)
                 try? FileManager.default.removeItem(at: imageURL)
+            }
+            for item in matchingItems {
+                if let thumbnailFilename = item.thumbnailFilename {
+                    try? FileManager.default.removeItem(at: thumbnailsDirectory.appendingPathComponent(thumbnailFilename))
+                }
             }
         }
 
@@ -295,6 +412,13 @@ public final class SharedLibraryStore: @unchecked Sendable {
         guard item.kind == .image else { return nil }
         let url = baseDirectory.appendingPathComponent("Images", isDirectory: true)
             .appendingPathComponent(item.value)
+        return try? Data(contentsOf: url)
+    }
+
+    public func thumbnailData(for item: SharedItem) -> Data? {
+        guard let thumbnailFilename = item.thumbnailFilename else { return nil }
+        let url = baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true)
+            .appendingPathComponent(thumbnailFilename)
         return try? Data(contentsOf: url)
     }
 
