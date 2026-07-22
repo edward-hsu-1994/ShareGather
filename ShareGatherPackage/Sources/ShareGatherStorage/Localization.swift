@@ -87,14 +87,19 @@ public enum SharedGatherLocalization {
         case "en", "zh-Hant", "zh-Hans":
             return preference
         default:
-            let localeIdentifier = Locale.current.identifier
-            if localeIdentifier.contains("zh_Hans") || localeIdentifier.contains("zh-CN") {
-                return "zh-Hans"
-            }
-            if localeIdentifier.contains("zh_Hant") || localeIdentifier.contains("zh-TW") {
-                return "zh-Hant"
-            }
-            return "en"
+            return systemLocaleIdentifier()
         }
+    }
+
+    public static func systemLocaleIdentifier() -> String {
+        let identifier = Locale.current.identifier
+            .replacingOccurrences(of: "_", with: "-")
+            .lowercased()
+
+        guard identifier.hasPrefix("zh") else { return "en" }
+        if identifier.contains("hans") || identifier.contains("zh-cn") || identifier.contains("zh-sg") {
+            return "zh-Hans"
+        }
+        return "zh-Hant"
     }
 }

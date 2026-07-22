@@ -367,14 +367,7 @@ private enum AppLanguage: String, CaseIterable, Identifiable {
     var resolvedLocaleIdentifier: String {
         switch self {
         case .system:
-            let identifier = Locale.current.identifier
-            if identifier.contains("zh_Hans") || identifier.contains("zh-CN") {
-                return "zh-Hans"
-            }
-            if identifier.contains("zh_Hant") || identifier.contains("zh-TW") {
-                return "zh-Hant"
-            }
-            return "en"
+            return SharedGatherLocalization.systemLocaleIdentifier()
         case .english, .traditionalChinese, .simplifiedChinese:
             return rawValue
         }
