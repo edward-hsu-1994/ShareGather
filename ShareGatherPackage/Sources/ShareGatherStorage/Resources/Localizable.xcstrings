@@ -17,6 +17,7 @@
     "library.item.detail" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved item" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "收藏內容" } } } },
     "library.link" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Link" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連結" } } } },
     "library.open.link" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Open link" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開啟連結" } } } },
+    "library.share" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Share" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "分享" } } } },
     "library.text" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Text" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "文字" } } } },
     "library.image" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Image" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "圖片" } } } },
     "library.saved.date" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved on" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "收藏日期" } } } },

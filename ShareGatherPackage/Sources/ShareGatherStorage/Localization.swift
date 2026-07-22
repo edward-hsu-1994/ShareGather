@@ -20,6 +20,7 @@ public enum SharedGatherLocalization {
         "library.item.detail": "收藏内容",
         "library.link": "链接",
         "library.open.link": "打开链接",
+        "library.share": "分享",
         "library.text": "文字",
         "library.image": "图片",
         "library.saved.date": "收藏日期",

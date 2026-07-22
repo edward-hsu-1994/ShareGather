@@ -408,6 +408,7 @@ private struct Copy {
     var itemDetailTitle: String { text("library.item.detail") }
     var linkTitle: String { text("library.link") }
     var openLinkTitle: String { text("library.open.link") }
+    var shareTitle: String { text("library.share") }
     var textTitle: String { text("library.text") }
     var imageTitle: String { text("library.image") }
     var savedDateTitle: String { text("library.saved.date") }
@@ -1128,6 +1129,7 @@ private struct SavedItemThumbnail: View {
 private struct SavedItemDetailView: View {
     let copy: Copy
     let item: SharedItem
+    @State private var isShowingShareSheet = false
 
     private var image: UIImage? {
         guard item.kind == .image,
@@ -1183,16 +1185,30 @@ private struct SavedItemDetailView: View {
                             .textSelection(.enabled)
 
                         if item.kind == .url, let url = URL(string: item.value) {
-                            Link(destination: url) {
-                                Label(copy.openLinkTitle, systemImage: "safari")
-                                    .font(.subheadline.weight(.semibold))
+                            HStack(spacing: 10) {
+                                Link(destination: url) {
+                                    Label(copy.openLinkTitle, systemImage: "safari")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                .buttonStyle(.borderedProminent)
+
+                                Button {
+                                    isShowingShareSheet = true
+                                } label: {
+                                    Label(copy.shareTitle, systemImage: "square.and.arrow.up")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                .buttonStyle(.bordered)
                             }
-                            .buttonStyle(.borderedProminent)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
                     .background(.background, in: RoundedRectangle(cornerRadius: 16))
+                }
+
+                if item.kind != .url {
+                    shareButton
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -1208,8 +1224,49 @@ private struct SavedItemDetailView: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle(copy.itemDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $isShowingShareSheet) {
+            ShareSheet(activityItems: activityItems)
+        }
     }
 
+    private var activityItems: [Any] {
+        let original = item.originalContent
+        switch original?.kind ?? item.kind {
+        case .url:
+            let value = original?.value ?? item.value
+            return [URL(string: value) ?? value]
+        case .text:
+            return [original?.value ?? item.value]
+        case .image:
+            if let store = try? SharedLibraryStore(),
+               let data = store.imageData(for: item),
+               let image = UIImage(data: data) {
+                return [image]
+            }
+            return [original?.value ?? item.value]
+        }
+    }
+
+    private var shareButton: some View {
+        Button {
+            isShowingShareSheet = true
+        } label: {
+            Label(copy.shareTitle, systemImage: "square.and.arrow.up")
+                .font(.subheadline.weight(.semibold))
+        }
+        .buttonStyle(.bordered)
+    }
+
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct ShareInstructionsSheet: View {
