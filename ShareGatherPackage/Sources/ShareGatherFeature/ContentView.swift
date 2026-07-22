@@ -1035,7 +1035,7 @@ private struct SavedItemRow: View {
 
     var body: some View {
         NavigationLink {
-            SavedItemDetailView(copy: copy, item: item)
+            SavedItemDetailView(copy: copy, item: item, onDelete: onDelete)
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 SavedItemThumbnail(item: item, fallbackIconName: iconName)
@@ -1129,7 +1129,10 @@ private struct SavedItemThumbnail: View {
 private struct SavedItemDetailView: View {
     let copy: Copy
     let item: SharedItem
+    let onDelete: (SharedItem) -> Void
+    @Environment(\.dismiss) private var dismiss
     @State private var isShowingShareSheet = false
+    @State private var isShowingDeleteConfirmation = false
 
     private var image: UIImage? {
         guard item.kind == .image,
@@ -1184,31 +1187,38 @@ private struct SavedItemDetailView: View {
                             .font(.body)
                             .textSelection(.enabled)
 
-                        if item.kind == .url, let url = URL(string: item.value) {
-                            HStack(spacing: 10) {
-                                Link(destination: url) {
-                                    Label(copy.openLinkTitle, systemImage: "safari")
-                                        .font(.subheadline.weight(.semibold))
-                                }
-                                .buttonStyle(.borderedProminent)
-
-                                Button {
-                                    isShowingShareSheet = true
-                                } label: {
-                                    Label(copy.shareTitle, systemImage: "square.and.arrow.up")
-                                        .font(.subheadline.weight(.semibold))
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
                     .background(.background, in: RoundedRectangle(cornerRadius: 16))
                 }
 
-                if item.kind != .url {
-                    shareButton
+                HStack(spacing: 10) {
+                    Button(role: .destructive) {
+                        isShowingDeleteConfirmation = true
+                    } label: {
+                        Label(copy.deleteTitle, systemImage: "trash")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        isShowingShareSheet = true
+                    } label: {
+                        Label(copy.shareTitle, systemImage: "square.and.arrow.up")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+
+                    if item.kind == .url, let url = URL(string: item.value) {
+                        Link(destination: url) {
+                            Label(copy.openLinkTitle, systemImage: "safari")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -1218,6 +1228,7 @@ private struct SavedItemDetailView: View {
                     Text(item.createdAt, format: .dateTime.year().month().day())
                         .font(.subheadline)
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(20)
         }
@@ -1226,6 +1237,15 @@ private struct SavedItemDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isShowingShareSheet) {
             ShareSheet(activityItems: activityItems)
+        }
+        .alert(copy.deleteConfirmationTitle, isPresented: $isShowingDeleteConfirmation) {
+            Button(copy.cancelTitle, role: .cancel) {}
+            Button(copy.deleteTitle, role: .destructive) {
+                onDelete(item)
+                dismiss()
+            }
+        } message: {
+            Text(copy.deleteConfirmationMessage)
         }
     }
 
@@ -1245,16 +1265,6 @@ private struct SavedItemDetailView: View {
             }
             return [original?.value ?? item.value]
         }
-    }
-
-    private var shareButton: some View {
-        Button {
-            isShowingShareSheet = true
-        } label: {
-            Label(copy.shareTitle, systemImage: "square.and.arrow.up")
-                .font(.subheadline.weight(.semibold))
-        }
-        .buttonStyle(.bordered)
     }
 
 }
