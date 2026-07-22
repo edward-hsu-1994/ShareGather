@@ -75,6 +75,7 @@ public enum SharedGatherLocalization {
         }
         return String(
             localized: String.LocalizationValue(key),
+            table: "Localizable",
             bundle: .module,
             locale: Locale(identifier: localeIdentifier)
         )
