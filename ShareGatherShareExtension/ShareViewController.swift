@@ -22,37 +22,32 @@ final class ShareViewController: UIViewController {
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
 
-    private var isTraditionalChinese: Bool {
-        Locale.current.language.languageCode?.identifier == "zh"
+    private var localeIdentifier: String { SharedGatherLocalization.sharedLanguageIdentifier() }
+    private func text(_ key: String) -> String {
+        SharedGatherLocalization.string(key, localeIdentifier: localeIdentifier)
     }
 
-    private var savingTitle: String { isTraditionalChinese ? "正在儲存…" : "Saving…" }
-    private var savedTitle: String { isTraditionalChinese ? "已儲存" : "Saved" }
-    private var failedTitle: String { isTraditionalChinese ? "儲存失敗" : "Could not save" }
-    private var doneTitle: String { isTraditionalChinese ? "完成" : "Done" }
-    private var cancelTitle: String { isTraditionalChinese ? "取消" : "Cancel" }
-    private var chooseCategoryTitle: String { isTraditionalChinese ? "選擇分類" : "Choose a category" }
-    private var chooseCategorySubtitle: String {
-        isTraditionalChinese ? "將這則分享內容保存到適合的位置" : "Save this shared item where you can find it later"
-    }
-    private var createCategoryTitle: String { isTraditionalChinese ? "建立新分類" : "Create a new category" }
-    private var createTitle: String { isTraditionalChinese ? "建立" : "Create" }
-    private var categoryNamePlaceholder: String { isTraditionalChinese ? "分類名稱" : "Category name" }
-    private var noCategoriesTitle: String { isTraditionalChinese ? "還沒有分類" : "No categories yet" }
-    private var noCategoriesMessage: String {
-        isTraditionalChinese ? "建立一個分類，將這則分享內容儲存到適合的位置。" : "Create a category to save this shared item in the right place."
-    }
-    private var newCategoryButtonTitle: String { isTraditionalChinese ? "新增分類" : "New category" }
-    private var uncategorizedTitle: String { isTraditionalChinese ? "未分類" : "Uncategorized" }
-    private var selectCategoryMessage: String { isTraditionalChinese ? "請先選擇分類" : "Select a category first" }
-    private var invalidCategoryMessage: String {
-        isTraditionalChinese ? "分類名稱需為 1 到 50 個字元。" : "Category names must contain 1 to 50 characters."
-    }
+    private var savingTitle: String { text("share.status.saving") }
+    private var savedTitle: String { text("share.status.saved") }
+    private var failedTitle: String { text("share.status.failed") }
+    private var doneTitle: String { text("common.done") }
+    private var cancelTitle: String { text("common.cancel") }
+    private var chooseCategoryTitle: String { text("share.category.title") }
+    private var chooseCategorySubtitle: String { text("share.category.subtitle") }
+    private var createCategoryTitle: String { text("category.create.new") }
+    private var createTitle: String { text("common.create") }
+    private var categoryNamePlaceholder: String { text("category.name.placeholder") }
+    private var noCategoriesTitle: String { text("category.empty") }
+    private var noCategoriesMessage: String { text("category.empty.message") }
+    private var newCategoryButtonTitle: String { text("category.new") }
+    private var uncategorizedTitle: String { text("library.uncategorized") }
+    private var selectCategoryMessage: String { text("category.select.message") }
+    private var invalidCategoryMessage: String { text("category.name.invalid") }
     private var itemTypeTitle: String {
         switch pendingKind {
-        case .url: return isTraditionalChinese ? "連結" : "Link"
-        case .text: return isTraditionalChinese ? "文字" : "Text"
-        case .image: return isTraditionalChinese ? "圖片" : "Image"
+        case .url: return text("library.link")
+        case .text: return text("library.text")
+        case .image: return text("library.image")
         case .none: return ""
         }
     }
@@ -74,7 +69,7 @@ final class ShareViewController: UIViewController {
         titleLabel.font = .preferredFont(forTextStyle: .title2)
         titleLabel.textAlignment = .center
 
-        statusLabel.text = "Preparing shared item…"
+        statusLabel.text = text("share.status.preparing")
         statusLabel.font = .preferredFont(forTextStyle: .body)
         statusLabel.textColor = .secondaryLabel
         statusLabel.textAlignment = .center
@@ -327,7 +322,7 @@ final class ShareViewController: UIViewController {
         newCategoryButton.configuration = .tinted()
         newCategoryButton.addTarget(self, action: #selector(createCategory), for: .touchUpInside)
 
-        saveButton.setTitle(isTraditionalChinese ? "儲存" : "Save", for: .normal)
+        saveButton.setTitle(text("common.save"), for: .normal)
         saveButton.configuration = .filled()
         saveButton.configuration?.cornerStyle = .capsule
         saveButton.isEnabled = selectedCategoryID != nil

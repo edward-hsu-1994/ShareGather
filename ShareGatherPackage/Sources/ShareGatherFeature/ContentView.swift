@@ -8,7 +8,7 @@ private extension Notification.Name {
 }
 
 public struct ContentView: View {
-    @AppStorage("appLanguage") private var selectedLanguage = AppLanguage.english.rawValue
+    @AppStorage("appLanguage") private var selectedLanguage = AppLanguage.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingInstructions = false
     @State private var isShowingCreateCategory = false
@@ -93,7 +93,11 @@ public struct ContentView: View {
                 }
             }
             .onAppear {
+                syncLanguagePreference()
                 reloadLibrary()
+            }
+            .onChange(of: selectedLanguage) { _, _ in
+                syncLanguagePreference()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 handleScenePhaseChange(newPhase)
@@ -176,6 +180,13 @@ public struct ContentView: View {
     }
 
     public init() {}
+
+    private func syncLanguagePreference() {
+        UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier)?.set(
+            selectedLanguage,
+            forKey: SharedGatherLocalization.languagePreferenceKey
+        )
+    }
 
     private var languageMenu: some View {
         Menu {
@@ -333,247 +344,115 @@ public struct ContentView: View {
 }
 
 private enum AppLanguage: String, CaseIterable, Identifiable {
+    case system = "system"
     case english = "en"
     case traditionalChinese = "zh-Hant"
+    case simplifiedChinese = "zh-Hans"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
+        case .system:
+            return "System Default"
         case .english:
             return "English"
         case .traditionalChinese:
             return "繁體中文"
+        case .simplifiedChinese:
+            return "简体中文"
+        }
+    }
+
+    var resolvedLocaleIdentifier: String {
+        switch self {
+        case .system:
+            let identifier = Locale.current.identifier
+            if identifier.contains("zh_Hans") || identifier.contains("zh-CN") {
+                return "zh-Hans"
+            }
+            if identifier.contains("zh_Hant") || identifier.contains("zh-TW") {
+                return "zh-Hant"
+            }
+            return "en"
+        case .english, .traditionalChinese, .simplifiedChinese:
+            return rawValue
         }
     }
 }
 
+
 private struct Copy {
     let language: AppLanguage
 
-    var appName: String { "ShareGather" }
-    var languageTitle: String { language == .english ? "Language" : "語系" }
-
-    var privacyTitle: String {
-        language == .english ? "Saved privately on this device" : "內容會私密地儲存在此裝置"
+    private func text(_ key: String) -> String {
+        SharedGatherLocalization.string(key, localeIdentifier: language.resolvedLocaleIdentifier)
     }
 
-    var privacySubtitle: String {
-        language == .english ? "No account. No cloud. Available offline." : "不需帳號、不上雲端，離線也能使用。"
-    }
-
-    var emptyTitle: String {
-        language == .english ? "Save it for later" : "先收藏，之後再看"
-    }
-
-    var emptyDescription: String {
-        language == .english
-            ? "Share links, images, or text from your favorite apps and find them here when you have time."
-            : "從喜歡的 App 分享連結、圖片或文字，等有空時再回來查看。"
-    }
-
-    var shareCardTitle: String {
-        language == .english ? "Save from another app" : "從其他 App 收藏內容"
-    }
-
-    var instructionOne: String {
-        language == .english ? "Find something you want to remember" : "找到想留下來的內容"
-    }
-
-    var instructionTwo: String {
-        language == .english ? "Tap the Share button" : "點選分享按鈕"
-    }
-
-    var instructionThree: String {
-        language == .english ? "Choose ShareGather" : "選擇 ShareGather"
-    }
-
-    var viewInstructions: String {
-        language == .english ? "View instructions" : "查看使用方式"
-    }
-
-    var savedItemsTitle: String {
-        language == .english ? "Your saved items" : "你的收藏"
-    }
-
-    var recentItemsTitle: String {
-        language == .english ? "Recent saved items" : "最近的新收藏"
-    }
-
-    var recentItemsEmpty: String {
-        language == .english ? "Your recent saved items will appear here." : "最近收藏的內容會顯示在這裡。"
-    }
-
-    var uncategorizedTitle: String {
-        language == .english ? "Uncategorized" : "未分類"
-    }
-
-    var savedImageTitle: String {
-        language == .english ? "Saved image" : "已儲存的圖片"
-    }
-
-    var itemDetailTitle: String {
-        language == .english ? "Saved item" : "收藏內容"
-    }
-
-    var linkTitle: String {
-        language == .english ? "Link" : "連結"
-    }
-
-    var openLinkTitle: String {
-        language == .english ? "Open link" : "開啟連結"
-    }
-
-    var textTitle: String {
-        language == .english ? "Text" : "文字"
-    }
-
-    var imageTitle: String {
-        language == .english ? "Image" : "圖片"
-    }
-
-    var savedDateTitle: String {
-        language == .english ? "Saved on" : "收藏日期"
-    }
-
-    var imageUnavailableTitle: String {
-        language == .english ? "This image is not available." : "這張圖片目前無法讀取。"
-    }
-
-    var categoriesTitle: String {
-        language == .english ? "Categories" : "分類"
-    }
-
-    var createCategoryTitle: String {
-        language == .english ? "Create a category" : "建立分類"
-    }
-
-    var renameCategoryTitle: String {
-        language == .english ? "Rename category" : "重新命名分類"
-    }
-
-    var createTitle: String {
-        language == .english ? "Create" : "建立"
-    }
-
-    var saveTitle: String {
-        language == .english ? "Save" : "儲存"
-    }
-
-    var cancelTitle: String {
-        language == .english ? "Cancel" : "取消"
-    }
-
-    var categoryNamePlaceholder: String {
-        language == .english ? "Category name" : "分類名稱"
-    }
-
-    var categoryNameHint: String {
-        language == .english ? "Give your saved items a place to go." : "為你的收藏建立一個整理的位置。"
-    }
-
-    var noCategoriesTitle: String {
-        language == .english ? "No categories yet" : "目前還沒有分類"
-    }
-
-    var noItemsInCategoryTitle: String {
-        language == .english ? "No saved items in this category" : "這個分類目前沒有收藏"
-    }
-
-    var deleteTitle: String {
-        language == .english ? "Delete" : "刪除"
-    }
-
-    var deleteConfirmationTitle: String {
-        language == .english ? "Delete saved item?" : "要刪除這個收藏嗎？"
-    }
-
-    var deleteConfirmationMessage: String {
-        language == .english ? "This action cannot be undone." : "此操作無法復原。"
-    }
-
-    var moveToCategoryTitle: String {
-        language == .english ? "Move to category" : "移至分類"
-    }
-
-    var recategorizeTitle: String {
-        language == .english ? "Move" : "移動"
-    }
-
-    var categoryContainsItemsTitle: String {
-        language == .english ? "Category contains saved items" : "此分類包含收藏"
-    }
+    var appName: String { text("app.name") }
+    var languageTitle: String { text("app.language.title") }
+    var privacyTitle: String { text("privacy.title") }
+    var privacySubtitle: String { text("privacy.subtitle") }
+    var emptyTitle: String { text("empty.title") }
+    var emptyDescription: String { text("empty.description") }
+    var shareCardTitle: String { text("share.card.title") }
+    var instructionOne: String { text("instructions.one") }
+    var instructionTwo: String { text("instructions.two") }
+    var instructionThree: String { text("instructions.three") }
+    var viewInstructions: String { text("share.instructions.view") }
+    var savedItemsTitle: String { text("library.saved.title") }
+    var recentItemsTitle: String { text("library.recent.title") }
+    var recentItemsEmpty: String { text("library.recent.empty") }
+    var uncategorizedTitle: String { text("library.uncategorized") }
+    var savedImageTitle: String { text("library.saved.image") }
+    var itemDetailTitle: String { text("library.item.detail") }
+    var linkTitle: String { text("library.link") }
+    var openLinkTitle: String { text("library.open.link") }
+    var textTitle: String { text("library.text") }
+    var imageTitle: String { text("library.image") }
+    var savedDateTitle: String { text("library.saved.date") }
+    var imageUnavailableTitle: String { text("library.image.unavailable") }
+    var categoriesTitle: String { text("category.title") }
+    var createCategoryTitle: String { text("category.create") }
+    var renameCategoryTitle: String { text("category.rename") }
+    var createTitle: String { text("common.create") }
+    var saveTitle: String { text("common.save") }
+    var cancelTitle: String { text("common.cancel") }
+    var categoryNamePlaceholder: String { text("category.name.placeholder") }
+    var categoryNameHint: String { text("category.name.hint") }
+    var noCategoriesTitle: String { text("category.empty") }
+    var noItemsInCategoryTitle: String { text("category.items.empty") }
+    var deleteTitle: String { text("common.delete") }
+    var deleteConfirmationTitle: String { text("item.delete.title") }
+    var deleteConfirmationMessage: String { text("common.irreversible") }
+    var moveToCategoryTitle: String { text("category.move") }
+    var recategorizeTitle: String { text("category.move.action") }
+    var categoryContainsItemsTitle: String { text("category.contains.title") }
+    var deleteItemsAndCategoryTitle: String { text("category.delete.items") }
+    var keepItemsDeleteCategoryTitle: String { text("category.keep.items") }
+    var deleteCategoryConfirmationTitle: String { text("category.delete.title") }
+    var createFirstCategoryTitle: String { text("category.first") }
+    var uncategorizedCollectionTitle: String { text("library.uncategorized.title") }
+    var sheetTitle: String { text("instructions.title") }
+    var sheetHeadline: String { text("instructions.headline") }
+    var sheetDescription: String { text("instructions.description") }
+    var sheetInstructionOne: String { text("instructions.one") }
+    var sheetInstructionTwo: String { text("instructions.two") }
+    var sheetInstructionThree: String { text("instructions.three") }
+    var done: String { text("common.done") }
 
     func categoryContainsItemsMessage(_ count: Int) -> String {
-        language == .english
-            ? "This category contains \(count) saved item\(count == 1 ? "" : "s"). Do you also want to delete them?"
-            : "此分類有 \(count) 個收藏，要同時刪除嗎？"
-    }
-
-    var deleteItemsAndCategoryTitle: String {
-        language == .english ? "Delete items and category" : "刪除收藏與分類"
-    }
-
-    var keepItemsDeleteCategoryTitle: String {
-        language == .english ? "Keep items, delete category" : "保留收藏，刪除分類"
-    }
-
-    var deleteCategoryConfirmationTitle: String {
-        language == .english ? "Delete this category?" : "要刪除這個分類嗎？"
-    }
-
-    func deleteCategoryConfirmationMessage(categoryName: String, deletesItems: Bool) -> String {
-        if language == .english {
-            return deletesItems
-                ? "\"\(categoryName)\" and all of its saved items will be deleted. This action cannot be undone."
-                : "\"\(categoryName)\" will be deleted and its saved items will become Uncategorized."
-        }
-        return deletesItems
-            ? "分類「\(categoryName)」及其中所有收藏都會被刪除，此操作無法復原。"
-            : "分類「\(categoryName)」會被刪除，其中的收藏會移至未分類。"
-    }
-
-    var createFirstCategoryTitle: String {
-        language == .english ? "Create your first category" : "建立第一個分類"
-    }
-
-    var uncategorizedCollectionTitle: String {
-        language == .english ? "Uncategorized saved items" : "未分類收藏"
+        text("category.contains.message").replacingOccurrences(of: "%d", with: "\(count)")
     }
 
     func itemCount(_ count: Int) -> String {
-        language == .english
-            ? "\(count) \(count == 1 ? "item" : "items")"
-            : "\(count) 個項目"
+        text("library.item.count").replacingOccurrences(of: "%d", with: "\(count)")
     }
 
-    var sheetTitle: String {
-        language == .english ? "How it works" : "使用方式"
+    func deleteCategoryConfirmationMessage(categoryName: String, deletesItems: Bool) -> String {
+        text(deletesItems ? "category.delete.with.items" : "category.delete.keep.items")
+            .replacingOccurrences(of: "%@", with: categoryName)
     }
-
-    var sheetHeadline: String {
-        language == .english ? "A simple way to keep what matters" : "簡單留下重要內容"
-    }
-
-    var sheetDescription: String {
-        language == .english
-            ? "ShareGather keeps your saved content on this device, ready whenever you have a quiet moment."
-            : "ShareGather 會將收藏內容保留在此裝置，等你有空時隨時回來查看。"
-    }
-
-    var sheetInstructionOne: String {
-        language == .english ? "Open a social app or browser" : "開啟社群 App 或瀏覽器"
-    }
-
-    var sheetInstructionTwo: String {
-        language == .english ? "Tap Share on something interesting" : "對感興趣的內容點選分享"
-    }
-
-    var sheetInstructionThree: String {
-        language == .english ? "Select ShareGather from the Share Sheet" : "從分享選單選擇 ShareGather"
-    }
-
-    var done: String { language == .english ? "Done" : "完成" }
 }
 
 private struct OfflinePrivacyBanner: View {
