@@ -1,5 +1,9 @@
 # ShareGather
 
+<p align="center">
+  <img src="ShareGather/Assets.xcassets/AppIcon.appiconset/SG_ICON_1024.png" alt="ShareGather logo" width="160">
+</p>
+
 ShareGather is a privacy-first iPhone app that receives content from the iOS Share Sheet and keeps it available for later review.
 
 It is designed for moments when something is interesting but there is no time to read it immediately. ShareGather stores the saved content locally, without accounts, sign-in, or a server-side service.
@@ -7,6 +11,7 @@ It is designed for moments when something is interesting but there is no time to
 ## Features
 
 - Receive URLs, text, and images from other apps through the Share Sheet.
+- Save URLs and text from the Share Sheet Action list with **Save to ShareGather**.
 - Save content locally in an App Group shared by the main app and Share Extension.
 - Organize saved items into user-created categories or leave them Uncategorized.
 - Create, rename, and delete categories.
@@ -41,11 +46,21 @@ The shared localization implementation is in `ShareGatherStorage`:
 - `ShareGatherPackage/Sources/ShareGatherStorage/` contains local persistence models, the App Group store, and shared localization.
 - `ShareGatherPackage/Sources/ShareGatherStorage/Resources/` contains the String Catalog.
 - `ShareGatherShareExtension/` contains the Share Extension that reads incoming URL, text, and image attachments, prepares metadata, and saves items.
+- `ShareGatherActionExtension/` contains the Share Sheet Action Extension for saving URLs and text through the Action list.
 - `ShareGatherPackage/Tests/` contains Swift Package tests.
 - `ShareGatherUITests/` contains Xcode UI test scaffolding.
 - `Config/` contains shared entitlements and build configuration.
 
 The primary shared models are `SharedItem`, `SharedCategory`, and `SharedOriginalContent`. Saved items include display metadata, category assignment, creation date, and the original shared payload when available. Images and URL thumbnails are stored in the local App Group container; item metadata is serialized locally.
+
+## Data Persistence and Updates
+
+Saved content is stored locally in the App Group container `group.com.sharegather.app`:
+
+- `saved-items.json` and `categories.json` store item and category metadata.
+- `Images/` and `Thumbnails/` store received images and cached URL thumbnails.
+
+Standard App Store or TestFlight updates retain this container when the app's bundle identifier and App Group identifier remain unchanged. The current storage format uses atomic file writes to reduce the risk of partial writes. Deleting the app and reinstalling it should not be treated as a backup strategy; export or backup support should be used before removing an installed app when that functionality becomes available.
 
 ## Requirements
 
@@ -67,7 +82,7 @@ xcodebuildmcp simulator build-and-run \
   --simulator-name 'iPhone 17'
 ```
 
-For a physical device, configure an Apple Developer account in Xcode, enable Developer Mode on the iPhone, register the device with the team, and select the Development Team for both `ShareGather` and `ShareGatherShareExtension`. Then run:
+For a physical device, configure an Apple Developer account in Xcode, enable Developer Mode on the iPhone, register the device with the team, and select the Development Team for `ShareGather` and both extension targets. Then run:
 
 ```sh
 xcodebuildmcp device list
