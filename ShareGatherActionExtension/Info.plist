@@ -8,12 +8,14 @@
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleDisplayName</key>
 	<string>ShareGather</string>
-	<key>CFBundleIconFiles</key>
-	<array>
-		<string>SG_ICON_40</string>
-	</array>
-	<key>CFBundleIconFile</key>
-	<string>SG_ICON_40</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleSymbolName</key>
+			<string>tray.and.arrow.down</string>
+		</dict>
+	</dict>
 	<key>CFBundleName</key>
 	<string>ShareGatherActionExtension</string>
 	<key>CFBundlePackageType</key>
