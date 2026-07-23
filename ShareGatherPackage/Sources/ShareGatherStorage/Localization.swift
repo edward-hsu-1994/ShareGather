@@ -109,14 +109,16 @@ public enum SharedGatherLocalization {
     }
 
     public static func systemLocaleIdentifier() -> String {
-        let identifier = Locale.current.identifier
+        let identifier = (Locale.preferredLanguages.first ?? Locale.current.identifier)
             .replacingOccurrences(of: "_", with: "-")
             .lowercased()
 
-        guard identifier.hasPrefix("zh") else { return "en" }
-        if identifier.contains("hans") || identifier.contains("zh-cn") || identifier.contains("zh-sg") {
-            return "zh-Hans"
+        if identifier.hasPrefix("zh") {
+            if identifier.contains("hans") || identifier.contains("zh-cn") || identifier.contains("zh-sg") {
+                return "zh-Hans"
+            }
+            return "zh-Hant"
         }
-        return "zh-Hant"
+        return "en"
     }
 }

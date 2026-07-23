@@ -9,23 +9,12 @@
 /* Begin PBXBuildFile section */
 		8B41F6832DEDD23B001A66F9 /* ShareGatherFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6822DEDD23B001A66F9 /* ShareGatherFeature */; };
 		8B41F6852DEDD25C001A66F9 /* ShareGatherFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6842DEDD25C001A66F9 /* ShareGatherFeature */; };
-		8B41F6872DEDD25C001A66F9 /* ShareGatherShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8B41F6892DEDD25C001A66F9 /* ShareGatherShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, CodeSignOnCopy, ); }; };
+		8B41F6872DEDD25C001A66F9 /* ShareGatherShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8B41F6892DEDD25C001A66F9 /* ShareGatherShareExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B41F6962DEDD25C001A66F9 /* ShareGatherStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6952DEDD25C001A66F9 /* ShareGatherStorage */; };
+		8B41F6A62DEDD25C001A66F9 /* ShareGatherActionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8B41F6A82DEDD25C001A66F9 /* ShareGatherActionExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		8B41F6B52DEDD25C001A66F9 /* ShareGatherStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6B42DEDD25C001A66F9 /* ShareGatherStorage */; };
+		8B41F6B62DEDD25C001A66F9 /* ShareGatherShareExtension/ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B41F6B72DEDD25C001A66F9 /* ShareGatherShareExtension/ShareViewController.swift */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		8B41F68C2DEDD25C001A66F9 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				8B41F6872DEDD25C001A66F9 /* ShareGatherShareExtension.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
 		8B41F65D2DEDD0D6001A66F9 /* PBXContainerItemProxy */ = {
@@ -42,15 +31,53 @@
 			remoteGlobalIDString = 8B41F68E2DEDD25C001A66F9;
 			remoteInfo = ShareGatherShareExtension;
 		};
+		8B41F6A72DEDD25C001A66F9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8B41F63D2DEDD0D5001A66F9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8B41F6A92DEDD25C001A66F9;
+			remoteInfo = ShareGatherActionExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8B41F68C2DEDD25C001A66F9 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8B41F6872DEDD25C001A66F9 /* ShareGatherShareExtension.appex in Embed Foundation Extensions */,
+				8B41F6A62DEDD25C001A66F9 /* ShareGatherActionExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		8B41F6452DEDD0D5001A66F9 /* ShareGather.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShareGather.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B41F65C2DEDD0D6001A66F9 /* ShareGather.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShareGather.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8B41F6892DEDD25C001A66F9 /* ShareGatherShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = ShareGatherShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B41F6892DEDD25C001A66F9 /* ShareGatherShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareGatherShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B41F6A82DEDD25C001A66F9 /* ShareGatherActionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareGatherActionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B41F6B72DEDD25C001A66F9 /* ShareGatherShareExtension/ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareGatherShareExtension/ShareViewController.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8B41F68A2DEDD25C001A66F9 /* Exceptions for "ShareGatherShareExtension" folder in "ShareGatherShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8B41F68E2DEDD25C001A66F9 /* ShareGatherShareExtension */;
+		};
+		8B41F6AA2DEDD25C001A66F9 /* Exceptions for "ShareGatherActionExtension" folder in "ShareGatherActionExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8B41F6A92DEDD25C001A66F9 /* ShareGatherActionExtension */;
+		};
 		8BD71C0A2DEE41E000CEDD92 /* Exceptions for "Config" folder in "ShareGather" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -60,14 +87,6 @@
 				Tests.xcconfig,
 			);
 			target = 8B41F6442DEDD0D5001A66F9 /* ShareGather */;
-		};
-		8B41F68A2DEDD25C001A66F9 /* Exceptions for "ShareGatherShareExtension" folder in "ShareGatherShareExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-				ShareGatherShareExtension.entitlements,
-			);
-			target = 8B41F68E2DEDD25C001A66F9 /* ShareGatherShareExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -82,20 +101,28 @@
 			path = ShareGatherUITests;
 			sourceTree = "<group>";
 		};
-		8BD71C052DEE41D800CEDD92 /* Config */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				8BD71C0A2DEE41E000CEDD92 /* Exceptions for "Config" folder in "ShareGather" target */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
 		8B41F68B2DEDD25C001A66F9 /* ShareGatherShareExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				8B41F68A2DEDD25C001A66F9 /* Exceptions for "ShareGatherShareExtension" folder in "ShareGatherShareExtension" target */,
 			);
 			path = ShareGatherShareExtension;
+			sourceTree = "<group>";
+		};
+		8B41F6AB2DEDD25C001A66F9 /* ShareGatherActionExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8B41F6AA2DEDD25C001A66F9 /* Exceptions for "ShareGatherActionExtension" folder in "ShareGatherActionExtension" target */,
+			);
+			path = ShareGatherActionExtension;
+			sourceTree = "<group>";
+		};
+		8BD71C052DEE41D800CEDD92 /* Config */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8BD71C0A2DEE41E000CEDD92 /* Exceptions for "Config" folder in "ShareGather" target */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -125,9 +152,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8B41F6AC2DEDD25C001A66F9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8B41F6B52DEDD25C001A66F9 /* ShareGatherStorage in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		449284163012624700A8ED4C /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				8B41F6B72DEDD25C001A66F9 /* ShareGatherShareExtension/ShareViewController.swift */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		8B41F63C2DEDD0D5001A66F9 = {
 			isa = PBXGroup;
 			children = (
@@ -135,8 +178,10 @@
 				8B41F6472DEDD0D5001A66F9 /* ShareGather */,
 				8B41F65F2DEDD0D6001A66F9 /* ShareGatherUITests */,
 				8B41F68B2DEDD25C001A66F9 /* ShareGatherShareExtension */,
+				8B41F6AB2DEDD25C001A66F9 /* ShareGatherActionExtension */,
 				8B41F6812DEDD23B001A66F9 /* Frameworks */,
 				8B41F6462DEDD0D5001A66F9 /* Products */,
+				449284163012624700A8ED4C /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -146,6 +191,7 @@
 				8B41F6452DEDD0D5001A66F9 /* ShareGather.app */,
 				8B41F65C2DEDD0D6001A66F9 /* ShareGather.xctest */,
 				8B41F6892DEDD25C001A66F9 /* ShareGatherShareExtension.appex */,
+				8B41F6A82DEDD25C001A66F9 /* ShareGatherActionExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -165,7 +211,7 @@
 			buildConfigurationList = 8B41F6662DEDD0D6001A66F9 /* Build configuration list for PBXNativeTarget "ShareGather" */;
 			buildPhases = (
 				8B41F6412DEDD0D5001A66F9 /* Sources */,
-		8B41F6422DEDD0D5001A66F9 /* Frameworks */,
+				8B41F6422DEDD0D5001A66F9 /* Frameworks */,
 				8B41F6432DEDD0D5001A66F9 /* Resources */,
 				8B41F68C2DEDD25C001A66F9 /* Embed Foundation Extensions */,
 			);
@@ -173,6 +219,7 @@
 			);
 			dependencies = (
 				8B41F6912DEDD25C001A66F9 /* PBXTargetDependency */,
+				8B41F6AF2DEDD25C001A66F9 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8B41F6472DEDD0D5001A66F9 /* ShareGather */,
@@ -233,6 +280,29 @@
 			productReference = 8B41F6892DEDD25C001A66F9 /* ShareGatherShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		8B41F6A92DEDD25C001A66F9 /* ShareGatherActionExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8B41F6B02DEDD25C001A66F9 /* Build configuration list for PBXNativeTarget "ShareGatherActionExtension" */;
+			buildPhases = (
+				8B41F6AD2DEDD25C001A66F9 /* Sources */,
+				8B41F6AC2DEDD25C001A66F9 /* Frameworks */,
+				8B41F6AE2DEDD25C001A66F9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8B41F6AB2DEDD25C001A66F9 /* ShareGatherActionExtension */,
+			);
+			name = ShareGatherActionExtension;
+			packageProductDependencies = (
+				8B41F6B42DEDD25C001A66F9 /* ShareGatherStorage */,
+			);
+			productName = ShareGatherActionExtension;
+			productReference = 8B41F6A82DEDD25C001A66F9 /* ShareGatherActionExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -253,6 +323,9 @@
 					8B41F68E2DEDD25C001A66F9 = {
 						CreatedOnToolsVersion = 16.3;
 					};
+					8B41F6A92DEDD25C001A66F9 = {
+						CreatedOnToolsVersion = 16.3;
+					};
 				};
 			};
 			buildConfigurationList = 8B41F6402DEDD0D5001A66F9 /* Build configuration list for PBXProject "ShareGather" */;
@@ -261,12 +334,14 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = 8B41F63C2DEDD0D5001A66F9;
+			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */,
 			);
-			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8B41F6462DEDD0D5001A66F9 /* Products */;
 			projectDirPath = "";
@@ -275,6 +350,7 @@
 				8B41F6442DEDD0D5001A66F9 /* ShareGather */,
 				8B41F65B2DEDD0D6001A66F9 /* ShareGatherUITests */,
 				8B41F68E2DEDD25C001A66F9 /* ShareGatherShareExtension */,
+				8B41F6A92DEDD25C001A66F9 /* ShareGatherActionExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -295,6 +371,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8B41F68F2DEDD25C001A66F9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8B41F6AE2DEDD25C001A66F9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -325,6 +408,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8B41F6AD2DEDD25C001A66F9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8B41F6B62DEDD25C001A66F9 /* ShareGatherShareExtension/ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -337,6 +428,11 @@
 			isa = PBXTargetDependency;
 			target = 8B41F68E2DEDD25C001A66F9 /* ShareGatherShareExtension */;
 			targetProxy = 8B41F6882DEDD25C001A66F9 /* PBXContainerItemProxy */;
+		};
+		8B41F6AF2DEDD25C001A66F9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8B41F6A92DEDD25C001A66F9 /* ShareGatherActionExtension */;
+			targetProxy = 8B41F6A72DEDD25C001A66F9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -586,6 +682,54 @@
 			};
 			name = Release;
 		};
+		8B41F6B12DEDD25C001A66F9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareGatherActionExtension/ShareGatherActionExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = F5QNUA96GU;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareGatherActionExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sharegather.app.ShareGatherActionExtension;
+				PRODUCT_NAME = ShareGatherActionExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		8B41F6B22DEDD25C001A66F9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareGatherActionExtension/ShareGatherActionExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = F5QNUA96GU;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareGatherActionExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sharegather.app.ShareGatherActionExtension;
+				PRODUCT_NAME = ShareGatherActionExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -625,7 +769,23 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		8B41F6B02DEDD25C001A66F9 /* Build configuration list for PBXNativeTarget "ShareGatherActionExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8B41F6B12DEDD25C001A66F9 /* Debug */,
+				8B41F6B22DEDD25C001A66F9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ShareGatherPackage;
+		};
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		8B41F6822DEDD23B001A66F9 /* ShareGatherFeature */ = {
@@ -643,14 +803,12 @@
 			package = 8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */;
 			productName = ShareGatherStorage;
 		};
-/* End XCSwiftPackageProductDependency section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ShareGatherPackage;
+		8B41F6B42DEDD25C001A66F9 /* ShareGatherStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */;
+			productName = ShareGatherStorage;
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8B41F63D2DEDD0D5001A66F9 /* Project object */;
 }

@@ -1,0 +1,20 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "save.to.sharegather" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save to ShareGather" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "儲存到ShareGather" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存到ShareGather" } }
+      }
+    },
+    "Content" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Content" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "內容" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "内容" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
