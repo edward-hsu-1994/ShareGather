@@ -12,6 +12,8 @@
 	<array>
 		<string>SG_ICON_40</string>
 	</array>
+	<key>CFBundleIconFile</key>
+	<string>SG_ICON_40</string>
 	<key>CFBundleName</key>
 	<string>ShareGatherActionExtension</string>
 	<key>CFBundlePackageType</key>
