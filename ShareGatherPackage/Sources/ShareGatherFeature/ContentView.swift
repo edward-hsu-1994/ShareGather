@@ -70,6 +70,7 @@ public struct ContentView: View {
                         copy: copy,
                         items: savedItems,
                         onDelete: requestDelete,
+                        onDeleteItem: deleteItem,
                         onRecategorize: requestRecategorization
                     )
 
@@ -561,6 +562,7 @@ private struct RecentSavedItemsSection: View {
     let copy: Copy
     let items: [SharedItem]
     let onDelete: (SharedItem) -> Void
+    let onDeleteItem: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
 
     private var recentItems: [SharedItem] {
@@ -592,6 +594,7 @@ private struct RecentSavedItemsSection: View {
                         copy: copy,
                         item: item,
                         onDelete: onDelete,
+                        onDetailDelete: onDeleteItem,
                         onRecategorize: onRecategorize
                     )
                 }
@@ -845,6 +848,7 @@ private struct CategorizedItemRow: View {
             onDelete: { _ in
                 isShowingDeleteConfirmation = true
             },
+            onDetailDelete: onDeleteItem,
             onRecategorize: { _ in
                 isShowingRecategorization = true
             }
@@ -929,6 +933,7 @@ private struct SavedItemsList: View {
                             copy: copy,
                             item: item,
                             onDelete: { _ in },
+                            onDetailDelete: { _ in },
                             onRecategorize: { _ in }
                         )
                     }
@@ -967,6 +972,7 @@ private struct UncategorizedItemsSection: View {
                             onDelete: { item in
                                 itemPendingDeletion = item
                             },
+                            onDetailDelete: onDelete,
                             onRecategorize: onRecategorize
                         )
                     }
@@ -1007,6 +1013,7 @@ private struct SavedItemRow: View {
     let copy: Copy
     let item: SharedItem
     let onDelete: (SharedItem) -> Void
+    let onDetailDelete: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
 
     private var iconName: String {
@@ -1035,7 +1042,7 @@ private struct SavedItemRow: View {
 
     var body: some View {
         NavigationLink {
-            SavedItemDetailView(copy: copy, item: item, onDelete: onDelete)
+            SavedItemDetailView(copy: copy, item: item, onDelete: onDetailDelete)
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 SavedItemThumbnail(item: item, fallbackIconName: iconName)
@@ -1241,6 +1248,7 @@ private struct SavedItemDetailView: View {
         .alert(copy.deleteConfirmationTitle, isPresented: $isShowingDeleteConfirmation) {
             Button(copy.cancelTitle, role: .cancel) {}
             Button(copy.deleteTitle, role: .destructive) {
+                isShowingDeleteConfirmation = false
                 onDelete(item)
                 dismiss()
             }
