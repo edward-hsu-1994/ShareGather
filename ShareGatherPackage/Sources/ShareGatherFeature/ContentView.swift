@@ -7,6 +7,14 @@ private extension Notification.Name {
     static let sharedItemDidDelete = Notification.Name("ShareGather.sharedItemDidDelete")
 }
 
+private struct CategoryItemFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
 public struct ContentView: View {
     @AppStorage("appLanguage") private var selectedLanguage = AppLanguage.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -966,6 +974,10 @@ private struct CategoryItemsView: View {
     @State private var selectedItemIDs: Set<UUID> = []
     @State private var isShowingBatchMove = false
     @State private var isShowingBatchDeleteConfirmation = false
+    @State private var itemFrames: [UUID: CGRect] = [:]
+    @State private var selectionDragAnchorID: UUID?
+    @State private var selectionDragInitialIDs: Set<UUID> = []
+    @State private var selectionDragSelectsItems = true
 
     init(
         copy: Copy,
@@ -1042,8 +1054,20 @@ private struct CategoryItemsView: View {
                                 } else {
                                     selectedItemIDs.insert(item.id)
                                 }
-                            }
+                            },
+                            onSelectionDragChanged: { location in
+                                updateSelectionDrag(from: item, at: location)
+                            },
+                            onSelectionDragEnded: endSelectionDrag
                         )
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: CategoryItemFramePreferenceKey.self,
+                                    value: [item.id: proxy.frame(in: .named("category-items"))]
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1051,6 +1075,8 @@ private struct CategoryItemsView: View {
             .padding(.vertical, 16)
         }
         .background(Color(uiColor: .systemGroupedBackground))
+        .coordinateSpace(name: "category-items")
+        .onPreferenceChange(CategoryItemFramePreferenceKey.self) { itemFrames = $0 }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
@@ -1058,7 +1084,10 @@ private struct CategoryItemsView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(isSelecting ? copy.cancelTitle : copy.selectTitle) {
                     isSelecting.toggle()
-                    if !isSelecting { selectedItemIDs.removeAll() }
+                    if !isSelecting {
+                        selectedItemIDs.removeAll()
+                        endSelectionDrag()
+                    }
                 }
             }
         }
@@ -1093,6 +1122,7 @@ private struct CategoryItemsView: View {
                 displayedItems.removeAll { selectedItemIDs.contains($0.id) }
                 selectedItemIDs.removeAll()
                 isSelecting = false
+                endSelectionDrag()
                 isShowingBatchMove = false
             }
         }
@@ -1104,6 +1134,7 @@ private struct CategoryItemsView: View {
                 displayedItems.removeAll { selectedItemIDs.contains($0.id) }
                 selectedItemIDs.removeAll()
                 isSelecting = false
+                endSelectionDrag()
             }
         } message: {
             Text(copy.batchDeleteConfirmationMessage(selectedItemIDs.count))
@@ -1112,11 +1143,40 @@ private struct CategoryItemsView: View {
             guard let updatedItem = notification.object as? SharedItem,
                   updatedItem.categoryID != categoryID else { return }
             displayedItems.removeAll { $0.id == updatedItem.id }
+            selectedItemIDs.remove(updatedItem.id)
         }
         .onReceive(NotificationCenter.default.publisher(for: .sharedItemDidDelete)) { notification in
             guard let deletedItemID = notification.object as? UUID else { return }
             displayedItems.removeAll { $0.id == deletedItemID }
+            selectedItemIDs.remove(deletedItemID)
         }
+    }
+
+    private func updateSelectionDrag(from item: SharedItem, at location: CGPoint) {
+        if selectionDragAnchorID == nil {
+            selectionDragAnchorID = item.id
+            selectionDragInitialIDs = selectedItemIDs
+            selectionDragSelectsItems = !selectedItemIDs.contains(item.id)
+        }
+
+        guard let anchorID = selectionDragAnchorID,
+              let anchorIndex = sortedItems.firstIndex(where: { $0.id == anchorID }),
+              let targetIndex = sortedItems.firstIndex(where: { itemFrames[$0.id]?.contains(location) == true }),
+              targetIndex >= anchorIndex else {
+            return
+        }
+
+        let rangeIDs = Set(sortedItems[anchorIndex...targetIndex].map(\.id))
+        if selectionDragSelectsItems {
+            selectedItemIDs = selectionDragInitialIDs.union(rangeIDs)
+        } else {
+            selectedItemIDs = selectionDragInitialIDs.subtracting(rangeIDs)
+        }
+    }
+
+    private func endSelectionDrag() {
+        selectionDragAnchorID = nil
+        selectionDragInitialIDs.removeAll()
     }
 }
 
@@ -1131,6 +1191,8 @@ private struct CategorizedItemRow: View {
     let isSelecting: Bool
     let isSelected: Bool
     let onToggleSelection: () -> Void
+    let onSelectionDragChanged: (CGPoint) -> Void
+    let onSelectionDragEnded: () -> Void
     @State private var isShowingRecategorization = false
     @State private var isShowingDeleteConfirmation = false
 
@@ -1148,17 +1210,20 @@ private struct CategorizedItemRow: View {
             pinAction: { onTogglePin(item) }
         )
         .allowsHitTesting(!isSelecting)
-        .overlay {
+        .overlay(alignment: .trailing) {
             if isSelecting {
-                Button(action: onToggleSelection) {
-                    Color.clear
-                }
-                .overlay(alignment: .trailing) {
-                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(isSelected ? .blue : .secondary)
-                        .padding(10)
-                }
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? .blue : .secondary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(
+                        DragGesture(minimumDistance: 0, coordinateSpace: .named("category-items"))
+                            .onChanged { onSelectionDragChanged($0.location) }
+                            .onEnded { _ in onSelectionDragEnded() }
+                    )
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    .accessibilityAction { onToggleSelection() }
             }
         }
         .overlay(alignment: .topLeading) {
