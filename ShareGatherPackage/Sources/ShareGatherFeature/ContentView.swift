@@ -525,8 +525,11 @@ private struct SettingsView: View {
                 Button(role: .destructive) {
                     isShowingClearAllItemsChoice = true
                 } label: {
-                    Label(copy.clearAllItemsTitle, systemImage: "trash")
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    HStack {
+                        Image(systemName: "trash")
+                        Spacer()
+                        Text(copy.clearAllItemsTitle)
+                    }
                 }
                 .disabled(savedItemCount == 0)
             }
