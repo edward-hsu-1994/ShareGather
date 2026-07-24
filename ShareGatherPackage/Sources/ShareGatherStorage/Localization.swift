@@ -5,6 +5,7 @@ public enum SharedGatherLocalization {
 
     private static let simplifiedChinese: [String: String] = [
         "app.language.title": "语言",
+        "settings.title": "设置",
         "app.name": "ShareGather",
         "privacy.title": "内容会私密地储存在此设备",
         "privacy.subtitle": "无需账号、不上云端，离线也能使用。",

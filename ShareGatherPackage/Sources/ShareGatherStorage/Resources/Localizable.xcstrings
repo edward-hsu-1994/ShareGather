@@ -2,6 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "app.language.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "語系" } } } },
+    "settings.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "設定" } } } },
     "app.name" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ShareGather" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "ShareGather" } } } },
     "privacy.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved privately on this device" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "內容會私密地儲存在此裝置" } } } },
     "privacy.subtitle" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No account. No cloud. Available offline." } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "不需帳號、不上雲端，離線也能使用。" } } } },

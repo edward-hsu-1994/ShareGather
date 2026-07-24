@@ -78,8 +78,10 @@ public struct ContentView: View {
                         onRecategorize: requestRecategorization
                     )
 
-                    ShareInstructionsCard(copy: copy) {
-                        isShowingInstructions = true
+                    if savedItems.isEmpty {
+                        ShareInstructionsCard(copy: copy) {
+                            isShowingInstructions = true
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -99,7 +101,21 @@ public struct ContentView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    languageMenu
+                    HStack(spacing: 16) {
+                        Button {
+                            isShowingInstructions = true
+                        } label: {
+                            Image(systemName: "questionmark.circle")
+                        }
+                        .accessibilityLabel(copy.viewInstructions)
+
+                        NavigationLink {
+                            SettingsView(selectedLanguage: $selectedLanguage)
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                        .accessibilityLabel(copy.settingsTitle)
+                    }
                 }
             }
             .onAppear {
@@ -196,24 +212,6 @@ public struct ContentView: View {
             selectedLanguage,
             forKey: SharedGatherLocalization.languagePreferenceKey
         )
-    }
-
-    private var languageMenu: some View {
-        Menu {
-            Picker(copy.languageTitle, selection: $selectedLanguage) {
-                ForEach(AppLanguage.allCases) { language in
-                    languageOption(language)
-                }
-            }
-        } label: {
-            Image(systemName: "globe")
-        }
-        .accessibilityLabel(copy.languageTitle)
-    }
-
-    private func languageOption(_ language: AppLanguage) -> some View {
-        Text(language.displayName)
-            .tag(language.rawValue)
     }
 
     private func reloadLibrary() {
@@ -397,6 +395,32 @@ private enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
+private struct SettingsView: View {
+    @Binding var selectedLanguage: String
+
+    private var language: AppLanguage {
+        AppLanguage(rawValue: selectedLanguage) ?? .english
+    }
+
+    private var copy: Copy {
+        Copy(language: language)
+    }
+
+    var body: some View {
+        Form {
+            Section(copy.languageTitle) {
+                Picker(copy.languageTitle, selection: $selectedLanguage) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.displayName)
+                            .tag(language.rawValue)
+                    }
+                }
+            }
+        }
+        .navigationTitle(copy.settingsTitle)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
 
 private struct Copy {
     let language: AppLanguage
@@ -407,6 +431,7 @@ private struct Copy {
 
     var appName: String { text("app.name") }
     var languageTitle: String { text("app.language.title") }
+    var settingsTitle: String { text("settings.title") }
     var privacyTitle: String { text("privacy.title") }
     var privacySubtitle: String { text("privacy.subtitle") }
     var emptyTitle: String { text("empty.title") }
