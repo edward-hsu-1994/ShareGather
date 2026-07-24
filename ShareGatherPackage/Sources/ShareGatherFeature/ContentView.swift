@@ -106,22 +106,34 @@ public struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if isSelectingUncategorized {
-                    HStack(spacing: 12) {
-                        Button {
-                            isShowingUncategorizedBatchMove = true
-                        } label: {
-                            Label(copy.batchMoveTitle, systemImage: "folder")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(selectedUncategorizedItemIDs.isEmpty)
+                    ZStack {
+                        HStack(spacing: 12) {
+                            Button {
+                                isShowingUncategorizedBatchMove = true
+                            } label: {
+                                Label(copy.batchMoveTitle, systemImage: "folder")
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(selectedUncategorizedItemIDs.isEmpty)
 
-                        Button(role: .destructive) {
-                            isShowingUncategorizedBatchDeleteConfirmation = true
-                        } label: {
-                            Label(copy.batchDeleteTitle, systemImage: "trash")
+                            Button(role: .destructive) {
+                                isShowingUncategorizedBatchDeleteConfirmation = true
+                            } label: {
+                                Label(copy.batchDeleteTitle, systemImage: "trash")
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(selectedUncategorizedItemIDs.isEmpty)
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(selectedUncategorizedItemIDs.isEmpty)
+
+                        HStack {
+                            Spacer()
+
+                            Button(copy.cancelTitle) {
+                                selectedUncategorizedItemIDs.removeAll()
+                                isSelectingUncategorized = false
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
