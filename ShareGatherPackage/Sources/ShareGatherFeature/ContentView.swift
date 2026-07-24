@@ -933,6 +933,7 @@ private struct CategoryReorderingSheet: View {
                 }
             }
             .navigationTitle(copy.reorderCategoriesTitle)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(copy.done) {
