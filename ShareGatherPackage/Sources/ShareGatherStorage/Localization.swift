@@ -28,6 +28,7 @@ public enum SharedGatherLocalization {
         "category.title": "分类",
         "category.create": "创建分类",
         "category.rename": "重命名分类",
+        "category.reorder": "重新排列分类",
         "common.create": "创建",
         "common.save": "保存",
         "common.cancel": "取消",

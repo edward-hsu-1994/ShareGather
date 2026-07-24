@@ -125,6 +125,10 @@ public enum CategoryDeletionItemDisposition: Equatable, Sendable {
     case moveItemsToUncategorized
 }
 
+public enum CategoryOrderError: Error, Equatable, Sendable {
+    case invalidCategoryIDs
+}
+
 public struct CategoryDeletionResult: Sendable {
     public let deletedCategoryID: UUID
     public let deletedItemIDs: [UUID]
@@ -209,6 +213,23 @@ public final class SharedLibraryStore: @unchecked Sendable {
         categories[index] = renamed
         try writeUnlocked(categories, to: categoriesURL)
         return renamed
+    }
+
+    public func reorderCategories(ids: [UUID]) throws {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let categories = try readUnlocked([SharedCategory].self, from: categoriesURL, missingValue: [])
+        let categoryIDs = Set(categories.map(\.id))
+        guard ids.count == categories.count,
+              Set(ids).count == ids.count,
+              Set(ids) == categoryIDs else {
+            throw CategoryOrderError.invalidCategoryIDs
+        }
+
+        let categoriesByID = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+        let reorderedCategories = ids.compactMap { categoriesByID[$0] }
+        try writeUnlocked(reorderedCategories, to: categoriesURL)
     }
 
     public func loadItems() throws -> [SharedItem] {

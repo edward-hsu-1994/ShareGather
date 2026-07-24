@@ -23,6 +23,7 @@ public struct ContentView: View {
     @State private var isShowingCategoryItemChoice = false
     @State private var isShowingCategoryDeleteConfirmation = false
     @State private var isShowingRecategorization = false
+    @State private var isShowingCategoryReordering = false
     @State private var savedItems: [SharedItem] = []
     @State private var categories: [SharedCategory] = []
 
@@ -49,7 +50,10 @@ public struct ContentView: View {
                         onRecategorize: requestRecategorization,
                         onRecategorizeToCategory: recategorizeItem,
                         onRenameCategory: requestRenameCategory,
-                        onDeleteCategory: requestDeleteCategory
+                        onDeleteCategory: requestDeleteCategory,
+                        onReorderCategories: {
+                            isShowingCategoryReordering = true
+                        }
                     ) {
                         newCategoryName = ""
                         isShowingCreateCategory = true
@@ -87,6 +91,11 @@ public struct ContentView: View {
             .sheet(isPresented: $isShowingInstructions) {
                 ShareInstructionsSheet(copy: copy)
                     .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $isShowingCategoryReordering) {
+                CategoryReorderingSheet(copy: copy, categories: categories) { reorderedCategories in
+                    reorderCategories(reorderedCategories)
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -238,6 +247,12 @@ public struct ContentView: View {
         _ = try? store.renameCategory(id: category.id, named: renamedCategoryName)
         categoryPendingRename = nil
         renamedCategoryName = ""
+        reloadLibrary()
+    }
+
+    private func reorderCategories(_ reorderedCategories: [SharedCategory]) {
+        guard let store = try? SharedLibraryStore() else { return }
+        guard (try? store.reorderCategories(ids: reorderedCategories.map(\.id))) != nil else { return }
         reloadLibrary()
     }
 
@@ -417,6 +432,7 @@ private struct Copy {
     var categoriesTitle: String { text("category.title") }
     var createCategoryTitle: String { text("category.create") }
     var renameCategoryTitle: String { text("category.rename") }
+    var reorderCategoriesTitle: String { text("category.reorder") }
     var createTitle: String { text("common.create") }
     var saveTitle: String { text("common.save") }
     var cancelTitle: String { text("common.cancel") }
@@ -613,6 +629,7 @@ private struct CategoryOverview: View {
     let onRecategorizeToCategory: (SharedItem, UUID?) -> Void
     let onRenameCategory: (SharedCategory) -> Void
     let onDeleteCategory: (SharedCategory) -> Void
+    let onReorderCategories: () -> Void
     let onCreateCategory: () -> Void
 
     private var countsByCategory: [UUID: Int] {
@@ -632,6 +649,14 @@ private struct CategoryOverview: View {
                     .font(.headline)
 
                 Spacer(minLength: 8)
+
+                if !categories.isEmpty {
+                    Button(action: onReorderCategories) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.subheadline.weight(.bold))
+                    }
+                    .accessibilityLabel(copy.reorderCategoriesTitle)
+                }
 
                 Button(action: onCreateCategory) {
                     Image(systemName: "plus")
@@ -688,6 +713,42 @@ private struct CategoryOverview: View {
                     }
                 }
             }
+        }
+    }
+}
+
+private struct CategoryReorderingSheet: View {
+    let copy: Copy
+    @State private var categories: [SharedCategory]
+    @Environment(\.dismiss) private var dismiss
+    let onReorder: ([SharedCategory]) -> Void
+
+    init(copy: Copy, categories: [SharedCategory], onReorder: @escaping ([SharedCategory]) -> Void) {
+        self.copy = copy
+        _categories = State(initialValue: categories)
+        self.onReorder = onReorder
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(categories) { category in
+                    Label(category.name, systemImage: "folder")
+                }
+                .onMove { source, destination in
+                    categories.move(fromOffsets: source, toOffset: destination)
+                    onReorder(categories)
+                }
+            }
+            .navigationTitle(copy.reorderCategoriesTitle)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(copy.done) {
+                        dismiss()
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
         }
     }
 }

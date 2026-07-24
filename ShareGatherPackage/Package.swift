@@ -31,7 +31,8 @@ let package = Package(
         .testTarget(
             name: "ShareGatherFeatureTests",
             dependencies: [
-                "ShareGatherFeature"
+                "ShareGatherFeature",
+                "ShareGatherStorage"
             ]
         ),
     ]

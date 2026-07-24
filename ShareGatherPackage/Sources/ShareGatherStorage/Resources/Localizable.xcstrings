@@ -25,6 +25,7 @@
     "category.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Categories" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "分類" } } } },
     "category.create" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Create a category" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "建立分類" } } } },
     "category.rename" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Rename category" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重新命名分類" } } } },
+    "category.reorder" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Reorder categories" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重新排列分類" } } } },
     "common.create" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Create" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "建立" } } } },
     "common.save" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "儲存" } } } },
     "common.cancel" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "取消" } } } },
