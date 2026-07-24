@@ -39,6 +39,12 @@ public struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    HomeHeader(copy: copy) {
+                        isShowingInstructions = true
+                    } settingsDestination: {
+                        SettingsView(selectedLanguage: $selectedLanguage)
+                    }
+
                     OfflinePrivacyBanner(copy: copy)
 
                     CategoryOverview(
@@ -88,8 +94,7 @@ public struct ContentView: View {
                 .padding(.vertical, 16)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle(copy.appName)
-            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $isShowingInstructions) {
                 ShareInstructionsSheet(copy: copy)
                     .presentationDetents([.medium, .large])
@@ -97,25 +102,6 @@ public struct ContentView: View {
             .sheet(isPresented: $isShowingCategoryReordering) {
                 CategoryReorderingSheet(copy: copy, categories: categories) { reorderedCategories in
                     reorderCategories(reorderedCategories)
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 16) {
-                        Button {
-                            isShowingInstructions = true
-                        } label: {
-                            Image(systemName: "questionmark.circle")
-                        }
-                        .accessibilityLabel(copy.viewInstructions)
-
-                        NavigationLink {
-                            SettingsView(selectedLanguage: $selectedLanguage)
-                        } label: {
-                            Image(systemName: "gearshape")
-                        }
-                        .accessibilityLabel(copy.settingsTitle)
-                    }
                 }
             }
             .onAppear {
@@ -419,6 +405,34 @@ private struct SettingsView: View {
         }
         .navigationTitle(copy.settingsTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+    }
+}
+
+private struct HomeHeader<SettingsDestination: View>: View {
+    let copy: Copy
+    let showInstructions: () -> Void
+    let settingsDestination: () -> SettingsDestination
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Text(copy.appName)
+                .font(.largeTitle.bold())
+
+            Spacer(minLength: 16)
+
+            Button(action: showInstructions) {
+                Image(systemName: "questionmark.circle")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(copy.viewInstructions)
+
+            NavigationLink(destination: settingsDestination) {
+                Image(systemName: "gearshape")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(copy.settingsTitle)
+        }
     }
 }
 
