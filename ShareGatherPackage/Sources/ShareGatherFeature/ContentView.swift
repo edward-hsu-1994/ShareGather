@@ -837,19 +837,21 @@ private struct CategoryOverview: View {
 
                 Spacer(minLength: 8)
 
-                if !categories.isEmpty {
-                    Button(action: onReorderCategories) {
-                        Image(systemName: "arrow.up.arrow.down")
+                HStack(spacing: 16) {
+                    if !categories.isEmpty {
+                        Button(action: onReorderCategories) {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .font(.subheadline.weight(.bold))
+                        }
+                        .accessibilityLabel(copy.reorderCategoriesTitle)
+                    }
+
+                    Button(action: onCreateCategory) {
+                        Image(systemName: "plus")
                             .font(.subheadline.weight(.bold))
                     }
-                    .accessibilityLabel(copy.reorderCategoriesTitle)
+                    .accessibilityLabel(copy.createCategoryTitle)
                 }
-
-                Button(action: onCreateCategory) {
-                    Image(systemName: "plus")
-                        .font(.subheadline.weight(.bold))
-                }
-                .accessibilityLabel(copy.createCategoryTitle)
             }
 
             if categories.isEmpty {
