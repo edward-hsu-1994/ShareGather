@@ -1588,6 +1588,7 @@ private struct SavedItemRow: View {
     let onDetailDelete: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
     let pinAction: (() -> Void)?
+    @State private var isShowingShareSheet = false
 
     init(
         copy: Copy,
@@ -1673,11 +1674,20 @@ private struct SavedItemRow: View {
                 Label(copy.moveToCategoryTitle, systemImage: "folder")
             }
 
+            Button {
+                isShowingShareSheet = true
+            } label: {
+                Label(copy.shareTitle, systemImage: "square.and.arrow.up")
+            }
+
             Button(role: .destructive) {
                 onDelete(item)
             } label: {
                 Label(copy.deleteTitle, systemImage: "trash")
             }
+        }
+        .sheet(isPresented: $isShowingShareSheet) {
+            ShareSheet(activityItems: shareActivityItems(for: item))
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
@@ -1856,23 +1866,27 @@ private struct SavedItemDetailView: View {
     }
 
     private var activityItems: [Any] {
-        let original = item.originalContent
-        switch original?.kind ?? item.kind {
-        case .url:
-            let value = original?.value ?? item.value
-            return [URL(string: value) ?? value]
-        case .text:
-            return [original?.value ?? item.value]
-        case .image:
-            if let store = try? SharedLibraryStore(),
-               let data = store.imageData(for: item),
-               let image = UIImage(data: data) {
-                return [image]
-            }
-            return [original?.value ?? item.value]
-        }
+        shareActivityItems(for: item)
     }
 
+}
+
+private func shareActivityItems(for item: SharedItem) -> [Any] {
+    let original = item.originalContent
+    switch original?.kind ?? item.kind {
+    case .url:
+        let value = original?.value ?? item.value
+        return [URL(string: value) ?? value]
+    case .text:
+        return [original?.value ?? item.value]
+    case .image:
+        if let store = try? SharedLibraryStore(),
+           let data = store.imageData(for: item),
+           let image = UIImage(data: data) {
+            return [image]
+        }
+        return [original?.value ?? item.value]
+    }
 }
 
 private struct ShareSheet: UIViewControllerRepresentable {
