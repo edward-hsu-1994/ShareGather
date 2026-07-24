@@ -31,6 +31,8 @@ public enum SharedGatherLocalization {
         "privacy.policy.metadata.title": "网址元数据请求",
         "privacy.policy.metadata.detail": "对于分享的网址，ShareGather 可能使用 Apple 的 Link Presentation 框架请求预览元数据，例如网页标题或缩图。这项请求是选用的：即使元数据载入失败，原始网址仍会储存。",
         "privacy.policy.metadata.third.party.detail": "发生这类请求时，该网址所对应的网站及其使用的服务可能会收到你的网络信息，例如 IP 地址，并依其隐私政策处理该请求。ShareGather 无法控制这些第三方。",
+        "privacy.policy.backup.title": "备份导入与导出",
+        "privacy.policy.backup.detail": "当你主动导出备份并透过系统分享选单传送时，备份档案可能包含你的收藏、分类、图片和缩图。接收档案的 App 或服务会依其隐私政策处理该档案。导入备份时，ShareGather 会从你选择的档案读取资料并储存在此设备。",
         "privacy.policy.choices.title": "你的选择与资料删除",
         "privacy.policy.choices.detail": "你可以控制储存的内容。你可以删除单一项目、删除分类、将项目移至未分类，或在设置中使用“清空所有收藏”。清空收藏会移除储存的项目资料及相关的本机图片和缩图；你可选择保留或删除分类。删除 App 可能会移除本机资料，请勿将删除后重新安装视为备份或导出方式。",
         "privacy.policy.changes.title": "本政策的变更",

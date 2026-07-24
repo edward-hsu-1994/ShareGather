@@ -24,6 +24,12 @@ For a shared URL, ShareGather may use Apple's Link Presentation framework to req
 
 When this occurs, the website associated with the URL and any services it uses may receive your network information, such as your IP address, and may process the request under their own privacy policies. ShareGather does not control those third parties.
 
+## Backup Import and Export
+
+When you choose to export a backup through the system Share Sheet, the backup file may contain your saved items, categories, images, and thumbnails. The app or service receiving the file handles it under its own privacy policy.
+
+When you import a backup, ShareGather reads the file you select and stores its data locally on this device.
+
 ## Your Choices and Data Deletion
 
 You control the content you save. You can delete individual items, delete categories, move items to Uncategorized, or use **Clear All Saved Items** in Settings. Clearing saved items removes the stored item data and associated local images and thumbnails. You can choose whether to keep or delete categories when clearing all saved items.

@@ -623,6 +623,8 @@ private struct Copy {
     var privacyPolicyMetadataTitle: String { text("privacy.policy.metadata.title") }
     var privacyPolicyMetadataDetail: String { text("privacy.policy.metadata.detail") }
     var privacyPolicyMetadataThirdPartyDetail: String { text("privacy.policy.metadata.third.party.detail") }
+    var privacyPolicyBackupTitle: String { text("privacy.policy.backup.title") }
+    var privacyPolicyBackupDetail: String { text("privacy.policy.backup.detail") }
     var privacyPolicyChoicesTitle: String { text("privacy.policy.choices.title") }
     var privacyPolicyChoicesDetail: String { text("privacy.policy.choices.detail") }
     var privacyPolicyChangesTitle: String { text("privacy.policy.changes.title") }
@@ -1947,6 +1949,11 @@ private struct PrivacyPolicySheet: View {
                             copy.privacyPolicyMetadataDetail,
                             copy.privacyPolicyMetadataThirdPartyDetail
                         ]
+                    )
+
+                    PrivacyPolicySection(
+                        title: copy.privacyPolicyBackupTitle,
+                        paragraphs: [copy.privacyPolicyBackupDetail]
                     )
 
                     PrivacyPolicySection(
