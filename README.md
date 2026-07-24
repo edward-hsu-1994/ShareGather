@@ -1,7 +1,7 @@
 # ShareGather
 
 <p align="center">
-  <img src="ShareGather/Assets.xcassets/AppIcon.appiconset/SG_ICON_1024.png" alt="ShareGather logo" width="160">
+  <img src="docs/assets/SG_ICON_120.png" alt="ShareGather logo" width="120">
 </p>
 
 ShareGather is a local-first iPhone app for saving URLs, text, and images from the iOS Share Sheet. It is built for collecting something now and reviewing it later—without an account, sign-in, or ShareGather cloud service.
