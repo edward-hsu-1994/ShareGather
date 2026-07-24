@@ -6,6 +6,12 @@ public enum SharedGatherLocalization {
     private static let simplifiedChinese: [String: String] = [
         "app.language.title": "语言",
         "settings.title": "设置",
+        "settings.danger.title": "危险区域",
+        "settings.clear.items": "清空所有收藏",
+        "settings.clear.items.choice.title": "清空所有收藏",
+        "settings.clear.items.choice.message": "这将永久删除 %d 个收藏及其图片。是否保留分类？",
+        "settings.clear.items.keep.categories": "保留分类",
+        "settings.clear.items.delete.categories": "删除收藏与分类",
         "app.name": "ShareGather",
         "privacy.title": "内容会私密地储存在此设备",
         "privacy.subtitle": "无需账号、不上云端，离线也能使用。",

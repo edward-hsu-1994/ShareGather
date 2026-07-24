@@ -42,7 +42,11 @@ public struct ContentView: View {
                     HomeHeader(copy: copy) {
                         isShowingInstructions = true
                     } settingsDestination: {
-                        SettingsView(selectedLanguage: $selectedLanguage)
+                        SettingsView(
+                            selectedLanguage: $selectedLanguage,
+                            savedItemCount: savedItems.count,
+                            onClearAllSavedContent: clearAllSavedContent
+                        )
                     }
 
                     OfflinePrivacyBanner(copy: copy)
@@ -240,6 +244,12 @@ public struct ContentView: View {
         reloadLibrary()
     }
 
+    private func clearAllSavedContent(keepingCategories: Bool) {
+        guard let store = try? SharedLibraryStore() else { return }
+        guard (try? store.clearAllSavedContent(keepingCategories: keepingCategories)) != nil else { return }
+        reloadLibrary()
+    }
+
     private var deleteAlertBinding: Binding<Bool> {
         Binding(
             get: { itemPendingDeletion != nil },
@@ -383,6 +393,9 @@ private enum AppLanguage: String, CaseIterable, Identifiable {
 
 private struct SettingsView: View {
     @Binding var selectedLanguage: String
+    let savedItemCount: Int
+    let onClearAllSavedContent: (Bool) -> Void
+    @State private var isShowingClearAllItemsChoice = false
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguage) ?? .english
@@ -402,10 +415,33 @@ private struct SettingsView: View {
                     }
                 }
             }
+
+            Section(copy.dangerZoneTitle) {
+                Button(role: .destructive) {
+                    isShowingClearAllItemsChoice = true
+                } label: {
+                    Label(copy.clearAllItemsTitle, systemImage: "trash")
+                }
+                .disabled(savedItemCount == 0)
+            }
         }
         .navigationTitle(copy.settingsTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        .alert(
+            copy.clearAllItemsChoiceTitle,
+            isPresented: $isShowingClearAllItemsChoice
+        ) {
+            Button(copy.clearAllItemsKeepCategoriesTitle, role: .destructive) {
+                onClearAllSavedContent(true)
+            }
+            Button(copy.clearAllItemsAndCategoriesTitle, role: .destructive) {
+                onClearAllSavedContent(false)
+            }
+            Button(copy.cancelTitle, role: .cancel) {}
+        } message: {
+            Text(copy.clearAllItemsChoiceMessage(savedItemCount))
+        }
     }
 }
 
@@ -443,9 +479,22 @@ private struct Copy {
         SharedGatherLocalization.string(key, localeIdentifier: language.resolvedLocaleIdentifier)
     }
 
+    var locale: Locale {
+        Locale(identifier: language.resolvedLocaleIdentifier)
+    }
+
+    func formattedDate(_ date: Date) -> String {
+        date.formatted(.dateTime.year().month(.wide).day().locale(locale))
+    }
+
     var appName: String { text("app.name") }
     var languageTitle: String { text("app.language.title") }
     var settingsTitle: String { text("settings.title") }
+    var dangerZoneTitle: String { text("settings.danger.title") }
+    var clearAllItemsTitle: String { text("settings.clear.items") }
+    var clearAllItemsChoiceTitle: String { text("settings.clear.items.choice.title") }
+    var clearAllItemsKeepCategoriesTitle: String { text("settings.clear.items.keep.categories") }
+    var clearAllItemsAndCategoriesTitle: String { text("settings.clear.items.delete.categories") }
     var privacyTitle: String { text("privacy.title") }
     var privacySubtitle: String { text("privacy.subtitle") }
     var emptyTitle: String { text("empty.title") }
@@ -497,6 +546,10 @@ private struct Copy {
     var sheetInstructionTwo: String { text("instructions.two") }
     var sheetInstructionThree: String { text("instructions.three") }
     var done: String { text("common.done") }
+
+    func clearAllItemsChoiceMessage(_ count: Int) -> String {
+        text("settings.clear.items.choice.message").replacingOccurrences(of: "%d", with: "\(count)")
+    }
 
     func categoryContainsItemsMessage(_ count: Int) -> String {
         text("category.contains.message").replacingOccurrences(of: "%d", with: "\(count)")
@@ -1159,7 +1212,7 @@ private struct SavedItemRow: View {
                             .lineLimit(2)
                     }
 
-                    Text(item.createdAt, style: .date)
+                    Text(copy.formattedDate(item.createdAt))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1332,7 +1385,7 @@ private struct SavedItemDetailView: View {
                     Text(copy.savedDateTitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(item.createdAt, format: .dateTime.year().month().day())
+                    Text(copy.formattedDate(item.createdAt))
                         .font(.subheadline)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)

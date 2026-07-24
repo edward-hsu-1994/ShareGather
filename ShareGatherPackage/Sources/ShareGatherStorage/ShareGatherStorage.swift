@@ -236,6 +236,23 @@ public final class SharedLibraryStore: @unchecked Sendable {
         try read([SharedItem].self, from: itemsURL, missingValue: [])
     }
 
+    @discardableResult
+    public func clearAllSavedContent(keepingCategories: Bool) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
+        try writeUnlocked([SharedItem](), to: itemsURL)
+        if !keepingCategories {
+            try writeUnlocked([SharedCategory](), to: categoriesURL)
+        }
+
+        let fileManager = FileManager.default
+        try? fileManager.removeItem(at: baseDirectory.appendingPathComponent("Images", isDirectory: true))
+        try? fileManager.removeItem(at: baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true))
+        return items.count
+    }
+
     public func saveItem(
         kind: SharedItemKind,
         value: String,

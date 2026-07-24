@@ -1,8 +1,14 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "app.language.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "語系" } } } },
+    "app.language.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "語言" } } } },
     "settings.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "設定" } } } },
+    "settings.danger.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Danger Zone" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "危險區域" } } } },
+    "settings.clear.items" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear All Saved Items" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "清空所有收藏" } } } },
+    "settings.clear.items.choice.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear All Saved Items" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "清空所有收藏" } } } },
+    "settings.clear.items.choice.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This will permanently delete %d saved items and their images. Do you want to keep your categories?" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "這將永久刪除 %d 個收藏及其圖片。是否保留分類？" } } } },
+    "settings.clear.items.keep.categories" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep Categories" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "保留分類" } } } },
+    "settings.clear.items.delete.categories" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Items and Categories" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "刪除收藏與分類" } } } },
     "app.name" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ShareGather" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "ShareGather" } } } },
     "privacy.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved privately on this device" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "內容會私密地儲存在此裝置" } } } },
     "privacy.subtitle" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No account. No cloud. Available offline." } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "不需帳號、不上雲端，離線也能使用。" } } } },
