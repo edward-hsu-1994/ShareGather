@@ -149,7 +149,7 @@ public struct ContentView: View {
                             onClearAllSavedContent: clearAllSavedContent
                         )
                     } label: {
-                        Text(copy.settingsTitle)
+                        Image(systemName: "gearshape")
                     }
                     .accessibilityLabel(copy.settingsTitle)
                 }
@@ -943,6 +943,7 @@ private struct CategoryReorderingSheet: View {
             }
             .environment(\.editMode, .constant(.active))
         }
+        .presentationDetents([.medium, .large])
     }
 }
 
