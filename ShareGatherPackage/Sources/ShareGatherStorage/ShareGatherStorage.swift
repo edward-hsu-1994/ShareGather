@@ -154,12 +154,18 @@ public enum SharedLibraryBackupError: LocalizedError {
     case invalidBackup
     case unsupportedVersion
     case missingMedia
+    case resourceLimitExceeded
+    case unsafeContents
+    case restoreFailed
 
     public var errorDescription: String? {
         switch self {
         case .invalidBackup: return "The backup file is invalid."
         case .unsupportedVersion: return "This backup version is not supported."
         case .missingMedia: return "The backup is missing saved media."
+        case .resourceLimitExceeded: return "The backup exceeds the supported import limits."
+        case .unsafeContents: return "The backup contains unsupported or unsafe files."
+        case .restoreFailed: return "The backup could not be restored safely."
         }
     }
 }
@@ -172,6 +178,25 @@ private struct ShareGatherBackupManifest: Codable {
     let itemCount: Int
     let imageCount: Int
     let thumbnailCount: Int
+}
+
+private enum BackupImportLimits {
+    static let maximumArchiveSize: UInt64 = 256 * 1_024 * 1_024
+    static let maximumEntryCount = 10_000
+    static let maximumTotalUncompressedSize: UInt64 = 512 * 1_024 * 1_024
+    static let maximumIndividualEntrySize: UInt64 = 128 * 1_024 * 1_024
+    static let maximumMetadataSize: UInt64 = 8 * 1_024 * 1_024
+    static let maximumPathLength = 240
+}
+
+private struct BackupImportTransactionJournal: Codable {
+    let transactionDirectoryName: String
+}
+
+private struct PreparedBackupImport {
+    let transactionDirectory: URL
+    let candidateDirectory: URL
+    let summary: BackupSummary
 }
 
 public enum CategoryOrderError: Error, Equatable, Sendable {
@@ -199,6 +224,9 @@ public final class SharedLibraryStore: @unchecked Sendable {
 
     private let baseDirectory: URL
     private let lock = NSLock()
+    private let transactionDirectoryPrefix = ".ShareGatherBackupImport-"
+    private let transactionJournalFilename = ".ShareGatherBackupImport.json"
+    private let libraryComponentNames = ["saved-items.json", "categories.json", "Images", "Thumbnails"]
 
     public init(baseDirectory: URL? = nil) throws {
         if let baseDirectory {
@@ -212,6 +240,7 @@ public final class SharedLibraryStore: @unchecked Sendable {
         }
 
         try FileManager.default.createDirectory(at: self.baseDirectory, withIntermediateDirectories: true)
+        try recoverPendingBackupImport()
     }
 
     public func loadCategories() throws -> [SharedCategory] {
@@ -661,76 +690,81 @@ public final class SharedLibraryStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        let fileManager = FileManager.default
-        var categories = try readUnlocked([SharedCategory].self, from: categoriesURL, missingValue: [])
-        var items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
-        if case .replace = mode {
-            categories = []
-            items = []
-            try? fileManager.removeItem(at: baseDirectory.appendingPathComponent("Images", isDirectory: true))
-            try? fileManager.removeItem(at: baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true))
+        let prepared = try prepareBackupImport(payload: payload, extractedAt: extractionDirectory, mode: mode)
+        do {
+            try commitPreparedBackupImport(prepared)
+            return prepared.summary
+        } catch {
+            try? FileManager.default.removeItem(at: prepared.transactionDirectory)
+            throw error
         }
-
-        let existingCategoryIDs = Set(categories.map(\.id))
-        let importedCategories = payload.categories.filter { !existingCategoryIDs.contains($0.id) }
-        categories.append(contentsOf: importedCategories)
-        let existingItemIDs = Set(items.map(\.id))
-        let imagesDirectory = baseDirectory.appendingPathComponent("Images", isDirectory: true)
-        let thumbnailsDirectory = baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true)
-        try fileManager.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: thumbnailsDirectory, withIntermediateDirectories: true)
-
-        for original in payload.items where !existingItemIDs.contains(original.id) {
-            var value = original.value
-            var thumbnailFilename = original.thumbnailFilename
-            var originalContent = original.originalContent
-            if original.kind == .image {
-                let newFilename = "\(UUID().uuidString).image"
-                try fileManager.copyItem(
-                    at: extractionDirectory.appendingPathComponent("Images").appendingPathComponent(original.value),
-                    to: imagesDirectory.appendingPathComponent(newFilename)
-                )
-                value = newFilename
-                originalContent = originalContent.map { SharedOriginalContent(kind: $0.kind, value: $0.value, sourceText: $0.sourceText, assetFilename: newFilename) }
-            }
-            if let originalThumbnailFilename = thumbnailFilename {
-                let newFilename = "\(UUID().uuidString).thumbnail"
-                try fileManager.copyItem(
-                    at: extractionDirectory.appendingPathComponent("Thumbnails").appendingPathComponent(originalThumbnailFilename),
-                    to: thumbnailsDirectory.appendingPathComponent(newFilename)
-                )
-                thumbnailFilename = newFilename
-            }
-            items.append(SharedItem(id: original.id, kind: original.kind, value: value, title: original.title, description: original.description, thumbnailFilename: thumbnailFilename, originalContent: originalContent, createdAt: original.createdAt, categoryID: original.categoryID, isPinned: original.isPinned))
-        }
-        try writeUnlocked(categories, to: categoriesURL)
-        try writeUnlocked(items, to: itemsURL)
-        return payload.summary
     }
 
     private func extractBackup(at backupURL: URL) throws -> URL {
+        let fileManager = FileManager.default
+        let values = try backupURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+        guard values.isRegularFile == true,
+              let fileSize = values.fileSize,
+              UInt64(fileSize) <= BackupImportLimits.maximumArchiveSize else {
+            throw SharedLibraryBackupError.resourceLimitExceeded
+        }
+        let archive: Archive
+        do {
+            archive = try Archive(url: backupURL, accessMode: .read)
+        } catch {
+            throw SharedLibraryBackupError.invalidBackup
+        }
+
+        var entryCount = 0
+        var totalUncompressedSize: UInt64 = 0
+        var paths = Set<String>()
+        for entry in archive {
+            entryCount += 1
+            guard entryCount <= BackupImportLimits.maximumEntryCount else {
+                throw SharedLibraryBackupError.resourceLimitExceeded
+            }
+            try validateArchiveEntry(entry, paths: &paths)
+            guard entry.uncompressedSize <= BackupImportLimits.maximumIndividualEntrySize,
+                  totalUncompressedSize <= BackupImportLimits.maximumTotalUncompressedSize - entry.uncompressedSize else {
+                throw SharedLibraryBackupError.resourceLimitExceeded
+            }
+            totalUncompressedSize += entry.uncompressedSize
+        }
+
         let extractionDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("ShareGatherRestore-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: extractionDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: extractionDirectory, withIntermediateDirectories: true)
         do {
-            try FileManager.default.unzipItem(at: backupURL, to: extractionDirectory)
+            for entry in archive {
+                let destination = extractionDirectory.appendingPathComponent(
+                    entry.path,
+                    isDirectory: entry.type == .directory
+                )
+                if entry.type == .directory {
+                    try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+                } else {
+                    try fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    _ = try archive.extract(entry, to: destination)
+                }
+            }
             return extractionDirectory
         } catch {
-            try? FileManager.default.removeItem(at: extractionDirectory)
+            try? fileManager.removeItem(at: extractionDirectory)
             throw SharedLibraryBackupError.invalidBackup
         }
     }
 
     private func readBackupPayload(from directory: URL) throws -> (categories: [SharedCategory], items: [SharedItem], summary: BackupSummary) {
-        let fileManager = FileManager.default
         let manifestURL = directory.appendingPathComponent("manifest.json")
-        guard let manifest = try? JSONDecoder().decode(ShareGatherBackupManifest.self, from: Data(contentsOf: manifestURL)),
+        guard let manifest = try? JSONDecoder().decode(ShareGatherBackupManifest.self, from: limitedData(at: manifestURL)),
               manifest.identifier == "com.sharegather.backup" else {
             throw SharedLibraryBackupError.invalidBackup
         }
         guard manifest.version == 1 else { throw SharedLibraryBackupError.unsupportedVersion }
-        guard let categories = try? JSONDecoder().decode([SharedCategory].self, from: Data(contentsOf: directory.appendingPathComponent("categories.json"))),
-              let items = try? JSONDecoder().decode([SharedItem].self, from: Data(contentsOf: directory.appendingPathComponent("items.json"))),
+        guard let categories = try? JSONDecoder().decode([SharedCategory].self, from: limitedData(at: directory.appendingPathComponent("categories.json"))),
+              let items = try? JSONDecoder().decode([SharedItem].self, from: limitedData(at: directory.appendingPathComponent("items.json"))),
+              manifest.categoryCount == categories.count,
+              manifest.itemCount == items.count,
               Set(categories.map(\.id)).count == categories.count,
               Set(items.map(\.id)).count == items.count,
               items.allSatisfy({ item in
@@ -738,11 +772,295 @@ public final class SharedLibraryStore: @unchecked Sendable {
               }) else {
             throw SharedLibraryBackupError.invalidBackup
         }
+
+        let imageFilenames = Set(items.compactMap { $0.kind == .image ? $0.value : nil })
+        let thumbnailFilenames = Set(items.compactMap(\.thumbnailFilename))
+        guard imageFilenames.count == items.filter({ $0.kind == .image }).count,
+              thumbnailFilenames.count == items.compactMap(\.thumbnailFilename).count,
+              imageFilenames.allSatisfy(isSafeMediaFilename),
+              thumbnailFilenames.allSatisfy(isSafeMediaFilename),
+              items.allSatisfy({ item in
+                  item.originalContent?.assetFilename.map(isSafeMediaFilename) ?? true
+              }),
+              manifest.imageCount == imageFilenames.count,
+              manifest.thumbnailCount == thumbnailFilenames.count else {
+            throw SharedLibraryBackupError.unsafeContents
+        }
         for item in items {
-            if item.kind == .image, !fileManager.fileExists(atPath: directory.appendingPathComponent("Images").appendingPathComponent(item.value).path) { throw SharedLibraryBackupError.missingMedia }
-            if let thumbnail = item.thumbnailFilename, !fileManager.fileExists(atPath: directory.appendingPathComponent("Thumbnails").appendingPathComponent(thumbnail).path) { throw SharedLibraryBackupError.missingMedia }
+            if item.kind == .image, !isRegularFile(directory.appendingPathComponent("Images").appendingPathComponent(item.value)) { throw SharedLibraryBackupError.missingMedia }
+            if let thumbnail = item.thumbnailFilename, !isRegularFile(directory.appendingPathComponent("Thumbnails").appendingPathComponent(thumbnail)) { throw SharedLibraryBackupError.missingMedia }
+        }
+        guard try mediaFilenames(in: directory.appendingPathComponent("Images")) == imageFilenames,
+              try mediaFilenames(in: directory.appendingPathComponent("Thumbnails")) == thumbnailFilenames else {
+            throw SharedLibraryBackupError.unsafeContents
         }
         return (categories, items, BackupSummary(categoryCount: categories.count, itemCount: items.count, imageCount: manifest.imageCount, thumbnailCount: manifest.thumbnailCount))
+    }
+
+    private func validateArchiveEntry(_ entry: Entry, paths: inout Set<String>) throws {
+        guard paths.insert(entry.path).inserted,
+              entry.path.count <= BackupImportLimits.maximumPathLength,
+              !entry.path.contains("\\"),
+              !entry.path.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains),
+              entry.type == .file || entry.type == .directory else {
+            throw SharedLibraryBackupError.unsafeContents
+        }
+
+        let isDirectory = entry.type == .directory
+        guard entry.path.hasSuffix("/") == isDirectory else {
+            throw SharedLibraryBackupError.unsafeContents
+        }
+        let normalizedPath = isDirectory ? String(entry.path.dropLast()) : entry.path
+        let components = normalizedPath.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        guard !components.isEmpty,
+              !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }) else {
+            throw SharedLibraryBackupError.unsafeContents
+        }
+
+        switch components {
+        case ["manifest.json"], ["categories.json"], ["items.json"]:
+            guard !isDirectory, entry.uncompressedSize <= BackupImportLimits.maximumMetadataSize else {
+                throw SharedLibraryBackupError.unsafeContents
+            }
+        case ["Images"], ["Thumbnails"]:
+            guard isDirectory else { throw SharedLibraryBackupError.unsafeContents }
+        case let components where components.count == 2 && (components[0] == "Images" || components[0] == "Thumbnails"):
+            guard !isDirectory, isSafeMediaFilename(components[1]) else {
+                throw SharedLibraryBackupError.unsafeContents
+            }
+        default:
+            throw SharedLibraryBackupError.unsafeContents
+        }
+    }
+
+    private func limitedData(at url: URL) throws -> Data {
+        let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey])
+        guard values.isRegularFile == true,
+              values.isSymbolicLink != true,
+              let fileSize = values.fileSize,
+              UInt64(fileSize) <= BackupImportLimits.maximumMetadataSize else {
+            throw SharedLibraryBackupError.resourceLimitExceeded
+        }
+        return try Data(contentsOf: url)
+    }
+
+    private func isSafeMediaFilename(_ filename: String) -> Bool {
+        !filename.isEmpty &&
+            filename.count <= BackupImportLimits.maximumPathLength &&
+            !filename.hasPrefix(".") &&
+            !filename.contains("/") &&
+            !filename.contains("\\") &&
+            !filename.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+    }
+
+    private func isRegularFile(_ url: URL) -> Bool {
+        guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]) else {
+            return false
+        }
+        return values.isRegularFile == true && values.isSymbolicLink != true
+    }
+
+    private func mediaFilenames(in directory: URL) throws -> Set<String> {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: directory.path) else { return [] }
+        let urls = try fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
+            options: []
+        )
+        guard urls.allSatisfy({ isSafeMediaFilename($0.lastPathComponent) && isRegularFile($0) }) else {
+            throw SharedLibraryBackupError.unsafeContents
+        }
+        return Set(urls.map(\.lastPathComponent))
+    }
+
+    private func prepareBackupImport(
+        payload: (categories: [SharedCategory], items: [SharedItem], summary: BackupSummary),
+        extractedAt extractionDirectory: URL,
+        mode: BackupImportMode
+    ) throws -> PreparedBackupImport {
+        let fileManager = FileManager.default
+        let transactionDirectory = baseDirectory
+            .appendingPathComponent("\(transactionDirectoryPrefix)\(UUID().uuidString)", isDirectory: true)
+        let candidateDirectory = transactionDirectory.appendingPathComponent("candidate", isDirectory: true)
+        let candidateImagesDirectory = candidateDirectory.appendingPathComponent("Images", isDirectory: true)
+        let candidateThumbnailsDirectory = candidateDirectory.appendingPathComponent("Thumbnails", isDirectory: true)
+        do {
+            try fileManager.createDirectory(at: candidateImagesDirectory, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: candidateThumbnailsDirectory, withIntermediateDirectories: true)
+
+            var categories: [SharedCategory]
+            var items: [SharedItem]
+            switch mode {
+            case .merge:
+                categories = try readUnlocked([SharedCategory].self, from: categoriesURL, missingValue: [])
+                items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
+                try copyExistingMediaDirectory(named: "Images", to: candidateImagesDirectory)
+                try copyExistingMediaDirectory(named: "Thumbnails", to: candidateThumbnailsDirectory)
+            case .replace:
+                categories = []
+                items = []
+            }
+
+            let existingCategoryIDs = Set(categories.map(\.id))
+            categories.append(contentsOf: payload.categories.filter { !existingCategoryIDs.contains($0.id) })
+            let existingItemIDs = Set(items.map(\.id))
+
+            for original in payload.items where !existingItemIDs.contains(original.id) {
+                var value = original.value
+                var thumbnailFilename = original.thumbnailFilename
+                var originalContent = original.originalContent
+                if original.kind == .image {
+                    let newFilename = "\(UUID().uuidString).image"
+                    try fileManager.copyItem(
+                        at: extractionDirectory.appendingPathComponent("Images").appendingPathComponent(original.value),
+                        to: candidateImagesDirectory.appendingPathComponent(newFilename)
+                    )
+                    value = newFilename
+                    originalContent = originalContent.map {
+                        SharedOriginalContent(
+                            kind: $0.kind,
+                            value: $0.value,
+                            sourceText: $0.sourceText,
+                            assetFilename: newFilename
+                        )
+                    }
+                }
+                if let originalThumbnailFilename = thumbnailFilename {
+                    let newFilename = "\(UUID().uuidString).thumbnail"
+                    try fileManager.copyItem(
+                        at: extractionDirectory.appendingPathComponent("Thumbnails").appendingPathComponent(originalThumbnailFilename),
+                        to: candidateThumbnailsDirectory.appendingPathComponent(newFilename)
+                    )
+                    thumbnailFilename = newFilename
+                }
+                items.append(
+                    SharedItem(
+                        id: original.id,
+                        kind: original.kind,
+                        value: value,
+                        title: original.title,
+                        description: original.description,
+                        thumbnailFilename: thumbnailFilename,
+                        originalContent: originalContent,
+                        createdAt: original.createdAt,
+                        categoryID: original.categoryID,
+                        isPinned: original.isPinned
+                    )
+                )
+            }
+
+            try write(categories, to: candidateDirectory.appendingPathComponent("categories.json"))
+            try write(items, to: candidateDirectory.appendingPathComponent("saved-items.json"))
+            try validateLibrary(at: candidateDirectory, categories: categories, items: items)
+            return PreparedBackupImport(
+                transactionDirectory: transactionDirectory,
+                candidateDirectory: candidateDirectory,
+                summary: payload.summary
+            )
+        } catch {
+            try? fileManager.removeItem(at: transactionDirectory)
+            throw error
+        }
+    }
+
+    private func commitPreparedBackupImport(_ prepared: PreparedBackupImport) throws {
+        let fileManager = FileManager.default
+        let rollbackDirectory = prepared.transactionDirectory.appendingPathComponent("rollback", isDirectory: true)
+        try fileManager.createDirectory(at: rollbackDirectory, withIntermediateDirectories: true)
+        let journal = BackupImportTransactionJournal(
+            transactionDirectoryName: prepared.transactionDirectory.lastPathComponent
+        )
+        try JSONEncoder().encode(journal).write(to: transactionJournalURL, options: .atomic)
+
+        do {
+            for component in libraryComponentNames {
+                let liveURL = baseDirectory.appendingPathComponent(component)
+                guard fileManager.fileExists(atPath: liveURL.path) else { continue }
+                try fileManager.moveItem(at: liveURL, to: rollbackDirectory.appendingPathComponent(component))
+            }
+            for component in libraryComponentNames {
+                try fileManager.moveItem(
+                    at: prepared.candidateDirectory.appendingPathComponent(component),
+                    to: baseDirectory.appendingPathComponent(component)
+                )
+            }
+            let categories = try readUnlocked([SharedCategory].self, from: categoriesURL, missingValue: [])
+            let items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
+            try validateLibrary(at: baseDirectory, categories: categories, items: items)
+            try fileManager.removeItem(at: transactionJournalURL)
+            try? fileManager.removeItem(at: prepared.transactionDirectory)
+        } catch {
+            do {
+                try restoreLibrary(from: rollbackDirectory)
+                try? fileManager.removeItem(at: transactionJournalURL)
+            } catch {
+                throw SharedLibraryBackupError.restoreFailed
+            }
+            throw error
+        }
+    }
+
+    private func recoverPendingBackupImport() throws {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: transactionJournalURL.path) else { return }
+        guard let journal = try? JSONDecoder().decode(
+            BackupImportTransactionJournal.self,
+            from: Data(contentsOf: transactionJournalURL)
+        ), journal.transactionDirectoryName.hasPrefix(transactionDirectoryPrefix),
+              !journal.transactionDirectoryName.contains("/") else {
+            throw SharedLibraryBackupError.restoreFailed
+        }
+        let transactionDirectory = baseDirectory.appendingPathComponent(journal.transactionDirectoryName, isDirectory: true)
+        let rollbackDirectory = transactionDirectory.appendingPathComponent("rollback", isDirectory: true)
+        do {
+            try restoreLibrary(from: rollbackDirectory)
+            try fileManager.removeItem(at: transactionJournalURL)
+            try? fileManager.removeItem(at: transactionDirectory)
+        } catch {
+            throw SharedLibraryBackupError.restoreFailed
+        }
+    }
+
+    private func restoreLibrary(from rollbackDirectory: URL) throws {
+        let fileManager = FileManager.default
+        for component in libraryComponentNames {
+            let liveURL = baseDirectory.appendingPathComponent(component)
+            if fileManager.fileExists(atPath: liveURL.path) {
+                try fileManager.removeItem(at: liveURL)
+            }
+        }
+        for component in libraryComponentNames {
+            let rollbackURL = rollbackDirectory.appendingPathComponent(component)
+            if fileManager.fileExists(atPath: rollbackURL.path) {
+                try fileManager.moveItem(at: rollbackURL, to: baseDirectory.appendingPathComponent(component))
+            }
+        }
+    }
+
+    private func copyExistingMediaDirectory(named name: String, to destination: URL) throws {
+        let source = baseDirectory.appendingPathComponent(name, isDirectory: true)
+        guard FileManager.default.fileExists(atPath: source.path) else { return }
+        try FileManager.default.removeItem(at: destination)
+        try FileManager.default.copyItem(at: source, to: destination)
+    }
+
+    private func validateLibrary(at directory: URL, categories: [SharedCategory], items: [SharedItem]) throws {
+        guard Set(categories.map(\.id)).count == categories.count,
+              Set(items.map(\.id)).count == items.count,
+              items.allSatisfy({ item in
+                  item.categoryID == nil || categories.contains(where: { $0.id == item.categoryID })
+              }) else {
+            throw SharedLibraryBackupError.restoreFailed
+        }
+        let imageFilenames = Set(items.compactMap { $0.kind == .image ? $0.value : nil })
+        let thumbnailFilenames = Set(items.compactMap(\.thumbnailFilename))
+        guard imageFilenames.allSatisfy(isSafeMediaFilename),
+              thumbnailFilenames.allSatisfy(isSafeMediaFilename),
+              try mediaFilenames(in: directory.appendingPathComponent("Images")) == imageFilenames,
+              try mediaFilenames(in: directory.appendingPathComponent("Thumbnails")) == thumbnailFilenames else {
+            throw SharedLibraryBackupError.restoreFailed
+        }
     }
 
     public func imageData(for item: SharedItem) -> Data? {
@@ -767,6 +1085,10 @@ public final class SharedLibraryStore: @unchecked Sendable {
         baseDirectory.appendingPathComponent("saved-items.json")
     }
 
+    private var transactionJournalURL: URL {
+        baseDirectory.appendingPathComponent(transactionJournalFilename)
+    }
+
     private func normalized(_ value: String) -> String {
         value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
@@ -782,8 +1104,12 @@ public final class SharedLibraryStore: @unchecked Sendable {
         return try JSONDecoder().decode(type, from: Data(contentsOf: url))
     }
 
-    private func writeUnlocked<T: Encodable>(_ value: T, to url: URL) throws {
+    private func write<T: Encodable>(_ value: T, to url: URL) throws {
         try JSONEncoder().encode(value).write(to: url, options: .atomic)
+    }
+
+    private func writeUnlocked<T: Encodable>(_ value: T, to url: URL) throws {
+        try write(value, to: url)
     }
 }
 

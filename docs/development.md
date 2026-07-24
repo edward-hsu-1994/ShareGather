@@ -17,6 +17,10 @@ Physical-device installation requires a registered device, Apple Developer signi
 
 All user-facing strings require English, Traditional Chinese, and Simplified Chinese updates. English and Traditional Chinese are in `Localizable.xcstrings`; Simplified Chinese is in `Localization.swift`. Verify the main app and Share Extension after changing shared language behavior.
 
+## Privacy Manifests
+
+`ShareGather/PrivacyInfo.xcprivacy` and `ShareGatherShareExtension/PrivacyInfo.xcprivacy` declare the required-reason use of App Group `UserDefaults` for the shared language preference. Update the applicable target manifests whenever code adds a privacy manifest data type or a Required Reason API. The Action Extension currently has no `UserDefaults` implementation.
+
 ## Dependencies
 
 New third-party dependencies require explicit user approval. Prefer Apple frameworks where possible. When a dependency changes, commit the relevant Swift Package lockfiles.

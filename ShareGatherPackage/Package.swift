@@ -38,7 +38,8 @@ let package = Package(
             name: "ShareGatherFeatureTests",
             dependencies: [
                 "ShareGatherFeature",
-                "ShareGatherStorage"
+                "ShareGatherStorage",
+                .product(name: "ZIPFoundation", package: "ZIPFoundation")
             ]
         ),
     ]
