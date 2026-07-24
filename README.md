@@ -4,24 +4,65 @@
   <img src="ShareGather/Assets.xcassets/AppIcon.appiconset/SG_ICON_1024.png" alt="ShareGather logo" width="160">
 </p>
 
-ShareGather is a privacy-first iPhone app that receives content from the iOS Share Sheet and keeps it available for later review.
-
-It is designed for moments when something is interesting but there is no time to read it immediately. ShareGather stores the saved content locally, without accounts, sign-in, or a server-side service.
+ShareGather is a local-first iPhone app for saving URLs, text, and images from the iOS Share Sheet. It is built for collecting something now and reviewing it later—without an account, sign-in, or ShareGather cloud service.
 
 ## Features
 
-- Receive URLs, text, and images from other apps through the Share Sheet.
+- Save URLs, text, and images through the iOS Share Sheet.
 - Save URLs and text from the Share Sheet Action list with **Save to ShareGather**.
-- Save content locally in an App Group shared by the main app and Share Extension.
-- Organize saved items into user-created categories or leave them Uncategorized.
-- Create, rename, and delete categories.
-- Delete a saved item with confirmation.
-- Move an item between categories, including back to Uncategorized.
-- Show URL metadata when available, including a title, description/source, and thumbnail.
-- Keep the original shared content alongside display metadata for later re-sharing.
-- Open or share an item again from its detail page.
+- Keep saved content offline in the shared App Group container used by the app and Share Extension.
+- Organize items into categories or leave them Uncategorized.
+- Create, rename, reorder, and delete categories.
+- Pin items within a category; pinned items appear at the top of that category.
+- Move or delete individual items, including moving them back to Uncategorized.
+- Select multiple items in category and Uncategorized views to move or delete them.
+- Long-press a saved item to pin it when available, move it, share it, or delete it.
 - Show recent saved items on the home screen.
-- Work without an account or cloud backend. URL metadata enrichment is best-effort; saving does not depend on it succeeding.
+- Preserve original shared content while optionally enriching URLs with a title, description/source, and thumbnail.
+- Open, share, or delete a saved item from its detail view.
+- Read the in-app privacy policy and open the project repository from Settings.
+
+## Backup and Restore
+
+ShareGather can export all saved content as a portable ZIP backup and share it through the iOS system share sheet. This lets you save the backup in Files, a cloud-drive app, or another app that accepts files.
+
+The exported filename uses this format:
+
+```text
+ShareGather Backup yyyy-MM-dd.zip
+```
+
+Each backup contains:
+
+```text
+manifest.json
+categories.json
+items.json
+Images/
+Thumbnails/
+```
+
+Backups include categories and their order, item metadata, category assignments, pin state, original shared content, images, and URL thumbnails. The selected app language is not included.
+
+To restore a backup, choose **Import Backup** in Settings and select a ZIP file in the Files picker. ShareGather validates the backup identifier, supported format version, metadata structure, duplicate IDs, category references, and required media files before offering these choices:
+
+- **Merge with Existing Items** keeps existing UUID-matching categories and items, then adds nonmatching backup data.
+- **Replace Existing Items** removes current items, categories, images, and thumbnails before restoring the backup.
+
+Backups are not encrypted. Sharing or uploading a ZIP gives the receiving app or service access to its contents, subject to that provider's privacy policy. Backup is user-directed file transfer, not automatic cloud synchronization.
+
+## Privacy
+
+ShareGather is intentionally local-first:
+
+- No account or sign-in.
+- No required server or cloud storage.
+- No analytics, advertising, or tracking integrations.
+- Saved content belongs to the user and stays in the local App Group container.
+
+For shared URLs, iOS Link Presentation may optionally request preview metadata such as a title or thumbnail. This can contact the linked website, but saving the original URL does not depend on metadata loading.
+
+Read the full policy in [PRIVACY.md](PRIVACY.md).
 
 ## Localization
 
@@ -31,49 +72,42 @@ The app supports:
 - Traditional Chinese (`zh-Hant`)
 - Simplified Chinese (`zh-Hans`)
 
-`System Default` follows the device language. If the device language is not supported, the app falls back to English. The selected language is shared with the Share Extension through the App Group preferences.
+`System Default` follows the device language and falls back to English for unsupported languages. The selected language is synchronized with the Share Extension through App Group preferences.
 
-The shared localization implementation is in `ShareGatherStorage`:
+English and Traditional Chinese are maintained in `ShareGatherPackage/Sources/ShareGatherStorage/Resources/Localizable.xcstrings`. Simplified Chinese is maintained in `ShareGatherPackage/Sources/ShareGatherStorage/Localization.swift`. User-facing text uses stable localization keys rather than language-specific view conditionals.
 
-- English and Traditional Chinese resources are maintained in `Resources/Localizable.xcstrings`.
-- Simplified Chinese strings are provided by `Localization.swift`.
-- User-facing strings should use localization keys rather than language conditionals or ternary expressions.
+## Architecture and Storage
 
-## Architecture
+- `ShareGather/` — SwiftUI app entry point and App Intent.
+- `ShareGatherPackage/Sources/ShareGatherFeature/` — main UI and interaction flows.
+- `ShareGatherPackage/Sources/ShareGatherStorage/` — shared models, local persistence, backup handling, and localization.
+- `ShareGatherShareExtension/` — Share Extension for incoming URLs, text, and images.
+- `ShareGatherActionExtension/` — Action Extension for saving URLs and text from the Share Sheet Action list.
+- `ShareGatherPackage/Tests/` — Swift Package tests.
+- `Config/` — shared entitlements and build configuration.
 
-- `ShareGather/` contains the SwiftUI app entry point.
-- `ShareGatherPackage/Sources/ShareGatherFeature/` contains the main app UI and interaction flows.
-- `ShareGatherPackage/Sources/ShareGatherStorage/` contains local persistence models, the App Group store, and shared localization.
-- `ShareGatherPackage/Sources/ShareGatherStorage/Resources/` contains the String Catalog.
-- `ShareGatherShareExtension/` contains the Share Extension that reads incoming URL, text, and image attachments, prepares metadata, and saves items.
-- `ShareGatherActionExtension/` contains the Share Sheet Action Extension for saving URLs and text through the Action list.
-- `ShareGatherPackage/Tests/` contains Swift Package tests.
-- `ShareGatherUITests/` contains Xcode UI test scaffolding.
-- `Config/` contains shared entitlements and build configuration.
+All saved content is stored locally in the App Group container `group.com.sharegather.app`:
 
-The primary shared models are `SharedItem`, `SharedCategory`, and `SharedOriginalContent`. Saved items include display metadata, category assignment, creation date, and the original shared payload when available. Images and URL thumbnails are stored in the local App Group container; item metadata is serialized locally.
+- `saved-items.json` stores item metadata.
+- `categories.json` stores categories and their order.
+- `Images/` stores saved images.
+- `Thumbnails/` stores cached URL thumbnails.
 
-## Data Persistence and Updates
+The app uses atomic JSON writes for normal metadata updates. ZIP backup creation and extraction use [ZIPFoundation](https://github.com/weichsel/ZIPFoundation).
 
-Saved content is stored locally in the App Group container `group.com.sharegather.app`:
-
-- `saved-items.json` and `categories.json` store item and category metadata.
-- `Images/` and `Thumbnails/` store received images and cached URL thumbnails.
-
-Standard App Store or TestFlight updates retain this container when the app's bundle identifier and App Group identifier remain unchanged. The current storage format uses atomic file writes to reduce the risk of partial writes. Deleting the app and reinstalling it should not be treated as a backup strategy; export or backup support should be used before removing an installed app when that functionality becomes available.
+Deleting and reinstalling the app is not a backup strategy. Export a backup before removing the app if you need to retain data.
 
 ## Requirements
 
-- macOS with Xcode
-- iOS 17 or later
-- An Apple Developer account for physical-device testing
-- A registered, paired iPhone with Developer Mode enabled for physical-device testing
+- iOS 17 or later.
+- macOS with Xcode for development.
+- An Apple Developer account, registered device, and Developer Mode for physical-device testing.
 
 ## Build and Run
 
 Open `ShareGather.xcworkspace` in Xcode and select the `ShareGather` scheme.
 
-For simulator verification, the repository uses XcodeBuildMCP:
+For simulator verification:
 
 ```sh
 xcodebuildmcp simulator build-and-run \
@@ -82,10 +116,9 @@ xcodebuildmcp simulator build-and-run \
   --simulator-name 'iPhone 17'
 ```
 
-For a physical device, configure an Apple Developer account in Xcode, enable Developer Mode on the iPhone, register the device with the team, and select the Development Team for `ShareGather` and both extension targets. Then run:
+For a physical device, configure signing for the app and both extension targets, then run:
 
 ```sh
-xcodebuildmcp device list
 xcodebuildmcp device build-and-run \
   --workspace-path ./ShareGather.xcworkspace \
   --scheme ShareGather \
@@ -93,25 +126,12 @@ xcodebuildmcp device build-and-run \
   --extra-args=-allowProvisioningUpdates
 ```
 
-The Share Extension requires valid signing and provisioning for physical-device installation. Simulator builds do not require device provisioning.
+## Verification Checklist
 
-## Testing
-
-Run the relevant test target from Xcode or use XcodeBuildMCP for project-specific test workflows. At minimum, verify:
-
-- The app builds for the simulator.
-- The app builds and launches on a signed physical device when device testing is in scope.
-- URLs, text, and images can be received through the Share Sheet.
-- Items remain available after relaunch and can be categorized, moved, shared, and deleted.
-- English, Traditional Chinese, Simplified Chinese, and System Default language selection update the app and Share Extension.
-
-## Privacy and Product Constraints
-
-ShareGather is intentionally local-first:
-
-- No account or sign-in flow.
-- No required server or cloud storage.
-- Saved content belongs to the user and stays in the local App Group container.
-- New functionality should preserve offline use unless the product requirements explicitly change.
-
-See [PRIVACY.md](PRIVACY.md) for the complete privacy policy, including the optional URL metadata request behavior.
+- Build and launch on a simulator.
+- Build and launch on a signed physical device when device testing is in scope.
+- Save URLs, text, and images through both sharing entry points.
+- Confirm saved items persist after relaunch and can be categorized, moved, pinned, shared, and deleted.
+- Confirm English, Traditional Chinese, Simplified Chinese, and System Default update the app and Share Extension.
+- Export a backup to Files or a cloud-drive app, then import it and verify both merge and replace behavior.
+- Confirm restored categories remain visible in the Share Extension.

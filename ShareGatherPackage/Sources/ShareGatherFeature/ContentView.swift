@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 import ShareGatherStorage
 
 private extension Notification.Name {
@@ -157,7 +158,8 @@ public struct ContentView: View {
                         SettingsView(
                             selectedLanguage: $selectedLanguage,
                             savedItemCount: savedItems.count,
-                            onClearAllSavedContent: clearAllSavedContent
+                            onClearAllSavedContent: clearAllSavedContent,
+                            onLibraryChanged: reloadLibrary
                         )
                     } label: {
                         Image(systemName: "gearshape")
@@ -511,8 +513,15 @@ private struct SettingsView: View {
     @Binding var selectedLanguage: String
     let savedItemCount: Int
     let onClearAllSavedContent: (Bool) -> Void
+    let onLibraryChanged: () -> Void
     @State private var isShowingClearAllItemsChoice = false
     @State private var isShowingPrivacyPolicy = false
+    @State private var isShowingBackupImporter = false
+    @State private var pendingBackupURL: URL?
+    @State private var isShowingBackupImportChoice = false
+    @State private var exportedBackupURL: URL?
+    @State private var isShowingBackupImportResult = false
+    @State private var didImportBackupSucceed = false
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguage) ?? .english
@@ -547,6 +556,18 @@ private struct SettingsView: View {
 
             Section(copy.applicationInformationTitle) {
                 Button {
+                    exportBackup()
+                } label: {
+                    Label(copy.exportBackupTitle, systemImage: "square.and.arrow.up")
+                }
+
+                Button {
+                    isShowingBackupImporter = true
+                } label: {
+                    Label(copy.importBackupTitle, systemImage: "square.and.arrow.down")
+                }
+
+                Button {
                     isShowingPrivacyPolicy = true
                 } label: {
                     Label(copy.privacyPolicyTitle, systemImage: "hand.raised")
@@ -574,6 +595,83 @@ private struct SettingsView: View {
             PrivacyPolicySheet(copy: copy)
                 .presentationDetents([.large])
         }
+        .sheet(isPresented: Binding(
+            get: { exportedBackupURL != nil },
+            set: { if !$0 { exportedBackupURL = nil } }
+        )) {
+            if let exportedBackupURL {
+                ShareSheet(activityItems: [exportedBackupURL])
+            }
+        }
+        .fileImporter(isPresented: $isShowingBackupImporter, allowedContentTypes: [.zip]) { result in
+            guard case let .success(url) = result else { return }
+            importBackupFile(from: url)
+        }
+        .confirmationDialog(copy.importBackupTitle, isPresented: $isShowingBackupImportChoice) {
+            Button(copy.mergeBackupTitle) { restoreBackup(mode: .merge) }
+            Button(copy.replaceBackupTitle, role: .destructive) { restoreBackup(mode: .replace) }
+            Button(copy.cancelTitle, role: .cancel) {}
+        } message: {
+            Text(copy.importBackupMessage)
+        }
+        .alert(
+            didImportBackupSucceed ? copy.importBackupSuccessTitle : copy.importBackupFailureTitle,
+            isPresented: $isShowingBackupImportResult
+        ) {
+            Button(copy.done) {}
+        } message: {
+            Text(didImportBackupSucceed ? copy.importBackupSuccessMessage : copy.importBackupFailureMessage)
+        }
+    }
+
+    private func exportBackup() {
+        guard let store = try? SharedLibraryStore() else { return }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd"
+        let filename = "ShareGather Backup \(formatter.string(from: Date())).zip"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+        guard (try? store.exportBackup(to: url)) != nil else { return }
+        exportedBackupURL = url
+    }
+
+    private func importBackupFile(from url: URL) {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        let localURL = FileManager.default.temporaryDirectory.appendingPathComponent("ShareGather Import \(UUID().uuidString).zip")
+        do {
+            try FileManager.default.copyItem(at: url, to: localURL)
+            guard let store = try? SharedLibraryStore(), (try? store.validateBackup(at: localURL)) != nil else {
+                showBackupImportFailure()
+                return
+            }
+            pendingBackupURL = localURL
+            isShowingBackupImportChoice = true
+        } catch {
+            showBackupImportFailure()
+        }
+    }
+
+    private func restoreBackup(mode: BackupImportMode) {
+        guard let pendingBackupURL, let store = try? SharedLibraryStore() else {
+            showBackupImportFailure()
+            return
+        }
+        defer { try? FileManager.default.removeItem(at: pendingBackupURL) }
+        guard (try? store.importBackup(at: pendingBackupURL, mode: mode)) != nil else {
+            showBackupImportFailure()
+            return
+        }
+        self.pendingBackupURL = nil
+        onLibraryChanged()
+        didImportBackupSucceed = true
+        isShowingBackupImportResult = true
+    }
+
+    private func showBackupImportFailure() {
+        didImportBackupSucceed = false
+        isShowingBackupImportResult = true
     }
 }
 
@@ -597,6 +695,15 @@ private struct Copy {
     var languageTitle: String { text("app.language.title") }
     var settingsTitle: String { text("settings.title") }
     var applicationInformationTitle: String { text("settings.application.information.title") }
+    var exportBackupTitle: String { text("backup.export") }
+    var importBackupTitle: String { text("backup.import") }
+    var mergeBackupTitle: String { text("backup.merge") }
+    var replaceBackupTitle: String { text("backup.replace") }
+    var importBackupMessage: String { text("backup.import.message") }
+    var importBackupSuccessTitle: String { text("backup.import.success.title") }
+    var importBackupSuccessMessage: String { text("backup.import.success.message") }
+    var importBackupFailureTitle: String { text("backup.import.failure.title") }
+    var importBackupFailureMessage: String { text("backup.import.failure.message") }
     var dangerZoneTitle: String { text("settings.danger.title") }
     var clearAllItemsTitle: String { text("settings.clear.items") }
     var clearAllItemsChoiceTitle: String { text("settings.clear.items.choice.title") }

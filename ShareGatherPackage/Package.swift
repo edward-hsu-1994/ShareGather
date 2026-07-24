@@ -17,11 +17,17 @@ let package = Package(
             targets: ["ShareGatherStorage"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.20")
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "ShareGatherStorage",
+            dependencies: [
+                .product(name: "ZIPFoundation", package: "ZIPFoundation")
+            ],
             resources: [.process("Resources")]
         ),
         .target(
