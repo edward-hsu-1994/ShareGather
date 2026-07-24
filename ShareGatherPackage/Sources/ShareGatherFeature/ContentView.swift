@@ -132,7 +132,6 @@ public struct ContentView: View {
                                 selectedUncategorizedItemIDs.removeAll()
                                 isSelectingUncategorized = false
                             }
-                            .buttonStyle(.bordered)
                         }
                     }
                     .frame(maxWidth: .infinity)
