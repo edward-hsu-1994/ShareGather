@@ -51,16 +51,6 @@ public struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    HomeHeader(copy: copy) {
-                        isShowingInstructions = true
-                    } settingsDestination: {
-                        SettingsView(
-                            selectedLanguage: $selectedLanguage,
-                            savedItemCount: savedItems.count,
-                            onClearAllSavedContent: clearAllSavedContent
-                        )
-                    }
-
                     OfflinePrivacyBanner(copy: copy)
 
                     CategoryOverview(
@@ -139,7 +129,31 @@ public struct ContentView: View {
                 }
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationTitle(copy.appName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isShowingInstructions = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .accessibilityLabel(copy.viewInstructions)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsView(
+                            selectedLanguage: $selectedLanguage,
+                            savedItemCount: savedItems.count,
+                            onClearAllSavedContent: clearAllSavedContent
+                        )
+                    } label: {
+                        Text(copy.settingsTitle)
+                    }
+                    .accessibilityLabel(copy.settingsTitle)
+                }
+            }
             .sheet(isPresented: $isShowingInstructions) {
                 ShareInstructionsSheet(copy: copy)
                     .presentationDetents([.medium, .large])
@@ -512,6 +526,7 @@ private struct SettingsView: View {
                     isShowingClearAllItemsChoice = true
                 } label: {
                     Label(copy.clearAllItemsTitle, systemImage: "trash")
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .disabled(savedItemCount == 0)
             }
@@ -532,33 +547,6 @@ private struct SettingsView: View {
             Button(copy.cancelTitle, role: .cancel) {}
         } message: {
             Text(copy.clearAllItemsChoiceMessage(savedItemCount))
-        }
-    }
-}
-
-private struct HomeHeader<SettingsDestination: View>: View {
-    let copy: Copy
-    let showInstructions: () -> Void
-    let settingsDestination: () -> SettingsDestination
-
-    var body: some View {
-        HStack(spacing: 16) {
-            Text(copy.appName)
-                .font(.largeTitle.bold())
-
-            Spacer(minLength: 16)
-
-            Button(action: showInstructions) {
-                Image(systemName: "questionmark.circle")
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel(copy.viewInstructions)
-
-            NavigationLink(destination: settingsDestination) {
-                Image(systemName: "gearshape")
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel(copy.settingsTitle)
         }
     }
 }
