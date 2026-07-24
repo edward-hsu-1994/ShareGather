@@ -32,6 +32,10 @@ public struct ContentView: View {
     @State private var isShowingCategoryDeleteConfirmation = false
     @State private var isShowingRecategorization = false
     @State private var isShowingCategoryReordering = false
+    @State private var isSelectingUncategorized = false
+    @State private var selectedUncategorizedItemIDs: Set<UUID> = []
+    @State private var isShowingUncategorizedBatchMove = false
+    @State private var isShowingUncategorizedBatchDeleteConfirmation = false
     @State private var savedItems: [SharedItem] = []
     @State private var categories: [SharedCategory] = []
 
@@ -87,7 +91,9 @@ public struct ContentView: View {
                             copy: copy,
                             items: savedItems,
                             onDelete: deleteItem,
-                            onRecategorize: requestRecategorization
+                            onRecategorize: requestRecategorization,
+                            isSelecting: $isSelectingUncategorized,
+                            selectedItemIDs: $selectedUncategorizedItemIDs
                         )
                     }
 
@@ -108,6 +114,30 @@ public struct ContentView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
             }
+            .safeAreaInset(edge: .bottom) {
+                if isSelectingUncategorized {
+                    HStack(spacing: 12) {
+                        Button {
+                            isShowingUncategorizedBatchMove = true
+                        } label: {
+                            Label(copy.batchMoveTitle, systemImage: "folder")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(selectedUncategorizedItemIDs.isEmpty)
+
+                        Button(role: .destructive) {
+                            isShowingUncategorizedBatchDeleteConfirmation = true
+                        } label: {
+                            Label(copy.batchDeleteTitle, systemImage: "trash")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(selectedUncategorizedItemIDs.isEmpty)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(.bar)
+                }
+            }
             .background(Color(uiColor: .systemGroupedBackground))
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $isShowingInstructions) {
@@ -117,6 +147,19 @@ public struct ContentView: View {
             .sheet(isPresented: $isShowingCategoryReordering) {
                 CategoryReorderingSheet(copy: copy, categories: categories) { reorderedCategories in
                     reorderCategories(reorderedCategories)
+                }
+            }
+            .sheet(isPresented: $isShowingUncategorizedBatchMove) {
+                CategorySelectionSheet(
+                    copy: copy,
+                    categories: categories,
+                    includesUncategorized: false
+                ) { categoryID in
+                    let selectedIDs = Array(selectedUncategorizedItemIDs)
+                    guard moveItems(selectedIDs, to: categoryID) != nil else { return }
+                    selectedUncategorizedItemIDs.removeAll()
+                    isSelectingUncategorized = false
+                    isShowingUncategorizedBatchMove = false
                 }
             }
             .onAppear {
@@ -158,6 +201,16 @@ public struct ContentView: View {
                 }
             } message: {
                 Text(copy.deleteConfirmationMessage)
+            }
+            .alert(copy.batchDeleteConfirmationTitle, isPresented: $isShowingUncategorizedBatchDeleteConfirmation) {
+                Button(copy.cancelTitle, role: .cancel) {}
+                Button(copy.batchDeleteTitle, role: .destructive) {
+                    guard deleteItems(Array(selectedUncategorizedItemIDs)) != nil else { return }
+                    selectedUncategorizedItemIDs.removeAll()
+                    isSelectingUncategorized = false
+                }
+            } message: {
+                Text(copy.batchDeleteConfirmationMessage(selectedUncategorizedItemIDs.count))
             }
             .sheet(isPresented: $isShowingRecategorization) {
                 CategorySelectionSheet(copy: copy, categories: categories) { categoryID in
@@ -1258,27 +1311,32 @@ private struct CategorySelectionSheet: View {
     let copy: Copy
     let categories: [SharedCategory]
     let excludingCategoryID: UUID?
+    let includesUncategorized: Bool
     let onSelect: (UUID?) -> Void
 
     init(
         copy: Copy,
         categories: [SharedCategory],
         excludingCategoryID: UUID? = nil,
+        includesUncategorized: Bool = true,
         onSelect: @escaping (UUID?) -> Void
     ) {
         self.copy = copy
         self.categories = categories
         self.excludingCategoryID = excludingCategoryID
+        self.includesUncategorized = includesUncategorized
         self.onSelect = onSelect
     }
 
     var body: some View {
         NavigationStack {
             List {
-                Button {
-                    onSelect(nil)
-                } label: {
-                    Label(copy.uncategorizedTitle, systemImage: "tray")
+                if includesUncategorized {
+                    Button {
+                        onSelect(nil)
+                    } label: {
+                        Label(copy.uncategorizedTitle, systemImage: "tray")
+                    }
                 }
 
                 Section(copy.categoriesTitle) {
@@ -1345,7 +1403,13 @@ private struct UncategorizedItemsSection: View {
     let items: [SharedItem]
     let onDelete: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
+    @Binding var isSelecting: Bool
+    @Binding var selectedItemIDs: Set<UUID>
     @State private var itemPendingDeletion: SharedItem?
+    @State private var itemFrames: [UUID: CGRect] = [:]
+    @State private var selectionDragAnchorID: UUID?
+    @State private var selectionDragInitialIDs: Set<UUID> = []
+    @State private var selectionDragSelectsItems = true
 
     private var uncategorizedItems: [SharedItem] {
         items
@@ -1359,8 +1423,18 @@ private struct UncategorizedItemsSection: View {
                 EmptyView()
             } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(copy.uncategorizedCollectionTitle)
-                        .font(.headline)
+                    HStack {
+                        Text(copy.uncategorizedCollectionTitle)
+                            .font(.headline)
+                        Spacer(minLength: 8)
+                        Button(isSelecting ? copy.cancelTitle : copy.selectTitle) {
+                            isSelecting.toggle()
+                            if !isSelecting {
+                                selectedItemIDs.removeAll()
+                                endSelectionDrag()
+                            }
+                        }
+                    }
 
                     ForEach(uncategorizedItems) { item in
                         SavedItemRow(
@@ -1372,8 +1446,34 @@ private struct UncategorizedItemsSection: View {
                             onDetailDelete: onDelete,
                             onRecategorize: onRecategorize
                         )
+                        .allowsHitTesting(!isSelecting)
+                        .overlay(alignment: .trailing) {
+                            if isSelecting {
+                                Image(systemName: selectedItemIDs.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(selectedItemIDs.contains(item.id) ? .blue : .secondary)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                                    .highPriorityGesture(
+                                        DragGesture(minimumDistance: 0, coordinateSpace: .named("uncategorized-items"))
+                                            .onChanged { updateSelectionDrag(from: item, at: $0.location) }
+                                            .onEnded { _ in endSelectionDrag() }
+                                    )
+                            }
+                        }
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: CategoryItemFramePreferenceKey.self,
+                                    value: [item.id: proxy.frame(in: .named("uncategorized-items"))]
+                                )
+                            }
+                        }
                     }
+
                 }
+                .coordinateSpace(name: "uncategorized-items")
+                .onPreferenceChange(CategoryItemFramePreferenceKey.self) { itemFrames = $0 }
             }
         }
         .alert(copy.deleteConfirmationTitle, isPresented: Binding(
@@ -1396,6 +1496,36 @@ private struct UncategorizedItemsSection: View {
         } message: {
             Text(copy.deleteConfirmationMessage)
         }
+        .onChange(of: isSelecting) { _, isSelecting in
+            if !isSelecting { endSelectionDrag() }
+        }
+    }
+
+    private func updateSelectionDrag(from item: SharedItem, at location: CGPoint) {
+        if selectionDragAnchorID == nil {
+            selectionDragAnchorID = item.id
+            selectionDragInitialIDs = selectedItemIDs
+            selectionDragSelectsItems = !selectedItemIDs.contains(item.id)
+        }
+
+        guard let anchorID = selectionDragAnchorID,
+              let anchorIndex = uncategorizedItems.firstIndex(where: { $0.id == anchorID }),
+              let targetIndex = uncategorizedItems.firstIndex(where: { itemFrames[$0.id]?.contains(location) == true }),
+              targetIndex >= anchorIndex else {
+            return
+        }
+
+        let rangeIDs = Set(uncategorizedItems[anchorIndex...targetIndex].map(\.id))
+        if selectionDragSelectsItems {
+            selectedItemIDs = selectionDragInitialIDs.union(rangeIDs)
+        } else {
+            selectedItemIDs = selectionDragInitialIDs.subtracting(rangeIDs)
+        }
+    }
+
+    private func endSelectionDrag() {
+        selectionDragAnchorID = nil
+        selectionDragInitialIDs.removeAll()
     }
 }
 
