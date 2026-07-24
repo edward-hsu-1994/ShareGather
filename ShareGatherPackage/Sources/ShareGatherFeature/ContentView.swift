@@ -28,6 +28,15 @@ private func orderedSavedItems(_ items: [SharedItem]) -> [SharedItem] {
     }
 }
 
+private func recentSavedItems(_ items: [SharedItem]) -> [SharedItem] {
+    items.sorted {
+        if $0.createdAt != $1.createdAt {
+            return $0.createdAt > $1.createdAt
+        }
+        return $0.id.uuidString < $1.id.uuidString
+    }
+}
+
 public struct ContentView: View {
     @AppStorage("appLanguage") private var selectedLanguage = AppLanguage.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -584,6 +593,14 @@ private struct SettingsView: View {
                 } label: {
                     Label(copy.privacyPolicyTitle, systemImage: "hand.raised")
                 }
+
+                Link(destination: URL(string: copy.privacyPolicyRepositoryURL)!) {
+                    Label(copy.privacyPolicyRepositoryLinkTitle, systemImage: "link")
+                }
+
+                Link(destination: URL(string: copy.websiteURL)!) {
+                    Label(copy.websiteLinkTitle, systemImage: "globe")
+                }
             }
         }
         .navigationTitle(copy.settingsTitle)
@@ -752,6 +769,8 @@ private struct Copy {
     var privacyPolicyContactDetail: String { text("privacy.policy.contact.detail") }
     var privacyPolicyRepositoryLinkTitle: String { text("privacy.policy.repository.link.title") }
     var privacyPolicyRepositoryURL: String { text("privacy.policy.repository.url") }
+    var websiteLinkTitle: String { text("settings.website.link.title") }
+    var websiteURL: String { text("settings.website.url") }
     var emptyTitle: String { text("empty.title") }
     var emptyDescription: String { text("empty.description") }
     var shareCardTitle: String { text("share.card.title") }
@@ -937,7 +956,7 @@ private struct RecentSavedItemsSection: View {
     let onRecategorize: (SharedItem) -> Void
 
     private var recentItems: [SharedItem] {
-        Array(orderedSavedItems(items).prefix(3))
+        Array(recentSavedItems(items).prefix(3))
     }
 
     var body: some View {
@@ -2080,11 +2099,6 @@ private struct PrivacyPolicySheet: View {
                             .font(.headline)
 
                         Text(copy.privacyPolicyContactDetail)
-
-                        Link(
-                            copy.privacyPolicyRepositoryLinkTitle,
-                            destination: URL(string: copy.privacyPolicyRepositoryURL)!
-                        )
                     }
                 }
                 .padding(24)

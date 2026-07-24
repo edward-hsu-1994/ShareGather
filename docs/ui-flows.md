@@ -4,7 +4,7 @@
 
 The home screen presents categories, Uncategorized items, recent items, and a privacy banner. The Share Sheet instruction card appears only when the library has no saved items.
 
-Saved-item lists sort pinned items first, then sort both pinned and unpinned items by creation time from newest to oldest. Pinned status is only managed in category item views; an item moved to Uncategorized retains its persisted pin value for ordering compatibility.
+Category and Uncategorized lists sort pinned items first, then sort both pinned and unpinned items by creation time from newest to oldest. The home screen's recent-items section ignores pin state and sorts only by creation time from newest to oldest. Pinned status is only managed in category item views; an item moved to Uncategorized retains its persisted pin value for ordering compatibility.
 
 ## Categories and Items
 
@@ -20,7 +20,7 @@ Settings is organized into Preferences, Danger Zone, and App Information.
 
 - Preferences contains language selection.
 - Danger Zone clears all saved content and lets the user choose whether categories are retained.
-- App Information exposes backup export/import and the Privacy Policy sheet.
+- App Information exposes backup export/import, the Privacy Policy sheet, the GitHub repository, and the official website.
 
 Import displays a result dialog for both successful and failed restore attempts. Exported backup names use `ShareGather Backup yyyy-MM-dd.zip`.
 

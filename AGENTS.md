@@ -20,7 +20,7 @@ ShareGather is a local-first iPhone app and Share Extension. It receives URLs, t
 - Categories can be created, renamed, reordered, deleted, and selected during sharing.
 - Deleting a category checks whether it contains items and lets the user delete those items or move them to Uncategorized.
 - Category items can be pinned; pinned items appear at the top of their category.
-- Saved-item lists sort pinned items first, then sort both pinned and unpinned items by creation time from newest to oldest.
+- Category and Uncategorized lists sort pinned items first, then sort both pinned and unpinned items by creation time from newest to oldest. The home screen's recent-items section sorts only by creation time from newest to oldest.
 - Category and Uncategorized views support multi-selection, drag selection, batch move, and batch delete.
 - Items can be opened, shared, deleted with confirmation, or moved to another category. Long-press menus expose the relevant item actions.
 - URL items can show a title, description/source, thumbnail, URL, and creation date.

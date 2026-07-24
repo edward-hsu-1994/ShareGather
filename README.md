@@ -14,7 +14,7 @@ ShareGather is a local-first iPhone app for saving URLs, text, and images from t
 - Organize items into categories or leave them Uncategorized.
 - Create, rename, reorder, and delete categories.
 - Pin items within a category; pinned items appear at the top of that category.
-- Sort saved-item lists with pinned items first, then by saved time from newest to oldest.
+- Sort category and Uncategorized lists with pinned items first, then by saved time from newest to oldest; Recent saved items always use saved time only.
 - Move or delete individual items, including moving them back to Uncategorized.
 - Select multiple items in category and Uncategorized views to move or delete them.
 - Long-press a saved item to pin it when available, move it, share it, or delete it.
