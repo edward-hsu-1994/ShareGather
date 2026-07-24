@@ -14,6 +14,7 @@ ShareGather is a local-first iPhone app for saving URLs, text, and images from t
 - Organize items into categories or leave them Uncategorized.
 - Create, rename, reorder, and delete categories.
 - Pin items within a category; pinned items appear at the top of that category.
+- Sort saved-item lists with pinned items first, then by saved time from newest to oldest.
 - Move or delete individual items, including moving them back to Uncategorized.
 - Select multiple items in category and Uncategorized views to move or delete them.
 - Long-press a saved item to pin it when available, move it, share it, or delete it.
@@ -77,6 +78,8 @@ The app supports:
 English and Traditional Chinese are maintained in `ShareGatherPackage/Sources/ShareGatherStorage/Resources/Localizable.xcstrings`. Simplified Chinese is maintained in `ShareGatherPackage/Sources/ShareGatherStorage/Localization.swift`. User-facing text uses stable localization keys rather than language-specific view conditionals.
 
 ## Architecture and Storage
+
+For component ownership, persistence details, UI interaction rules, and development conventions, see the [design documentation](docs/README.md).
 
 - `ShareGather/` — SwiftUI app entry point and App Intent.
 - `ShareGatherPackage/Sources/ShareGatherFeature/` — main UI and interaction flows.
