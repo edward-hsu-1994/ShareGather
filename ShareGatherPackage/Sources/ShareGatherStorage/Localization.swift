@@ -45,6 +45,8 @@ public enum SharedGatherLocalization {
         "category.items.empty": "这个分类目前没有收藏",
         "common.delete": "删除",
         "item.delete.title": "要删除这个收藏吗？",
+        "item.pin": "置顶",
+        "item.unpin": "取消置顶",
         "common.irreversible": "此操作无法恢复。",
         "category.move": "移至分类",
         "category.move.action": "移动",

@@ -56,3 +56,20 @@ import ShareGatherStorage
     #expect(try store.clearAllSavedContent(keepingCategories: false) == 1)
     #expect(try store.loadCategories().isEmpty)
 }
+
+@Test func pinningAnItemPersistsAndSurvivesRecategorization() throws {
+    let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let store = try SharedLibraryStore(baseDirectory: directory)
+    let first = try store.createCategory(named: "First")
+    let second = try store.createCategory(named: "Second")
+    let item = try store.saveItem(kind: .text, value: "Saved text", categoryID: first.id)
+
+    #expect(item.isPinned == false)
+    #expect(try store.updateItemPin(id: item.id, isPinned: true).isPinned)
+    #expect(try store.loadItems().first?.isPinned == true)
+    #expect(try store.updateItemCategory(id: item.id, categoryID: second.id).isPinned == true)
+    #expect(try store.updateItemPin(id: item.id, isPinned: false).isPinned == false)
+}

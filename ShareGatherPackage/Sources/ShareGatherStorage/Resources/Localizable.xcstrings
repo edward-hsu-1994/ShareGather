@@ -42,6 +42,8 @@
     "category.items.empty" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No saved items in this category" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "這個分類目前沒有收藏" } } } },
     "common.delete" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "刪除" } } } },
     "item.delete.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete saved item?" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "要刪除這個收藏嗎？" } } } },
+    "item.pin" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pin" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "置頂" } } } },
+    "item.unpin" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unpin" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "取消置頂" } } } },
     "common.irreversible" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This action cannot be undone." } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "此操作無法復原。" } } } },
     "category.move" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Move to category" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "移至分類" } } } },
     "category.move.action" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Move" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "移動" } } } },

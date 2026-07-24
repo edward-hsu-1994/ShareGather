@@ -50,6 +50,7 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
     public let originalContent: SharedOriginalContent?
     public let createdAt: Date
     public let categoryID: UUID?
+    public let isPinned: Bool
 
     public init(
         id: UUID = UUID(),
@@ -60,7 +61,8 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         thumbnailFilename: String? = nil,
         originalContent: SharedOriginalContent? = nil,
         createdAt: Date = Date(),
-        categoryID: UUID? = nil
+        categoryID: UUID? = nil,
+        isPinned: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -71,10 +73,11 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         self.originalContent = originalContent
         self.createdAt = createdAt
         self.categoryID = categoryID
+        self.isPinned = isPinned
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, value, title, description, thumbnailFilename, originalContent, createdAt, categoryID
+        case id, kind, value, title, description, thumbnailFilename, originalContent, createdAt, categoryID, isPinned
     }
 
     public init(from decoder: Decoder) throws {
@@ -87,6 +90,7 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         thumbnailFilename = try container.decodeIfPresent(String.self, forKey: .thumbnailFilename)
         originalContent = try container.decodeIfPresent(SharedOriginalContent.self, forKey: .originalContent)
         categoryID = try container.decodeIfPresent(UUID.self, forKey: .categoryID)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         createdAt = try Self.decodeDate(from: container.superDecoder(forKey: .createdAt))
     }
 
@@ -100,6 +104,7 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         try container.encodeIfPresent(thumbnailFilename, forKey: .thumbnailFilename)
         try container.encodeIfPresent(originalContent, forKey: .originalContent)
         try container.encode(categoryID, forKey: .categoryID)
+        try container.encode(isPinned, forKey: .isPinned)
 
         let formatter = ISO8601DateFormatter()
 		let dateContainer = container.superEncoder(forKey: .createdAt)
@@ -345,7 +350,36 @@ public final class SharedLibraryStore: @unchecked Sendable {
             thumbnailFilename: current.thumbnailFilename,
             originalContent: current.originalContent,
             createdAt: current.createdAt,
-            categoryID: categoryID
+            categoryID: categoryID,
+            isPinned: current.isPinned
+        )
+        items[index] = updated
+        try writeUnlocked(items, to: itemsURL)
+        return updated
+    }
+
+    @discardableResult
+    public func updateItemPin(id: UUID, isPinned: Bool) throws -> SharedItem {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
+        guard let index = items.firstIndex(where: { $0.id == id }) else {
+            throw SharedLibraryError.itemNotFound
+        }
+
+        let current = items[index]
+        let updated = SharedItem(
+            id: current.id,
+            kind: current.kind,
+            value: current.value,
+            title: current.title,
+            description: current.description,
+            thumbnailFilename: current.thumbnailFilename,
+            originalContent: current.originalContent,
+            createdAt: current.createdAt,
+            categoryID: current.categoryID,
+            isPinned: isPinned
         )
         items[index] = updated
         try writeUnlocked(items, to: itemsURL)
@@ -413,7 +447,8 @@ public final class SharedLibraryStore: @unchecked Sendable {
                     thumbnailFilename: item.thumbnailFilename,
                     originalContent: item.originalContent,
                     createdAt: item.createdAt,
-                    categoryID: nil
+                    categoryID: nil,
+                    isPinned: item.isPinned
                 )
             }
         }

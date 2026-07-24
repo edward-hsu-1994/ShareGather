@@ -63,7 +63,8 @@ public struct ContentView: View {
                         onDeleteCategory: requestDeleteCategory,
                         onReorderCategories: {
                             isShowingCategoryReordering = true
-                        }
+                        },
+                        onUpdatePin: updateItemPin
                     ) {
                         newCategoryName = ""
                         isShowingCreateCategory = true
@@ -248,6 +249,15 @@ public struct ContentView: View {
         guard let store = try? SharedLibraryStore() else { return }
         guard (try? store.clearAllSavedContent(keepingCategories: keepingCategories)) != nil else { return }
         reloadLibrary()
+    }
+
+    private func updateItemPin(_ item: SharedItem, isPinned: Bool) -> SharedItem? {
+        guard let store = try? SharedLibraryStore(),
+              let updatedItem = try? store.updateItemPin(id: item.id, isPinned: isPinned) else {
+            return nil
+        }
+        reloadLibrary()
+        return updatedItem
     }
 
     private var deleteAlertBinding: Binding<Bool> {
@@ -495,6 +505,8 @@ private struct Copy {
     var clearAllItemsChoiceTitle: String { text("settings.clear.items.choice.title") }
     var clearAllItemsKeepCategoriesTitle: String { text("settings.clear.items.keep.categories") }
     var clearAllItemsAndCategoriesTitle: String { text("settings.clear.items.delete.categories") }
+    var pinItemTitle: String { text("item.pin") }
+    var unpinItemTitle: String { text("item.unpin") }
     var privacyTitle: String { text("privacy.title") }
     var privacySubtitle: String { text("privacy.subtitle") }
     var emptyTitle: String { text("empty.title") }
@@ -722,6 +734,7 @@ private struct CategoryOverview: View {
     let onRenameCategory: (SharedCategory) -> Void
     let onDeleteCategory: (SharedCategory) -> Void
     let onReorderCategories: () -> Void
+    let onUpdatePin: (SharedItem, Bool) -> SharedItem?
     let onCreateCategory: () -> Void
 
     private var countsByCategory: [UUID: Int] {
@@ -779,7 +792,8 @@ private struct CategoryOverview: View {
                                 categoryID: category.id,
                                 onDelete: onDelete,
                                 onDeleteItem: onDeleteItem,
-                                onRecategorizeToCategory: onRecategorizeToCategory
+                                onRecategorizeToCategory: onRecategorizeToCategory,
+                                onUpdatePin: onUpdatePin
                             )
                         } label: {
                             CategoryCard(
@@ -913,6 +927,7 @@ private struct CategoryItemsView: View {
     @State private var displayedItems: [SharedItem]
     let categoryID: UUID
     let onRecategorizeToCategory: (SharedItem, UUID?) -> Void
+    let onUpdatePin: (SharedItem, Bool) -> SharedItem?
 
     init(
         copy: Copy,
@@ -922,7 +937,8 @@ private struct CategoryItemsView: View {
         categoryID: UUID,
         onDelete: @escaping (SharedItem) -> Void,
         onDeleteItem: @escaping (SharedItem) -> Void,
-        onRecategorizeToCategory: @escaping (SharedItem, UUID?) -> Void
+        onRecategorizeToCategory: @escaping (SharedItem, UUID?) -> Void,
+        onUpdatePin: @escaping (SharedItem, Bool) -> SharedItem?
     ) {
         self.copy = copy
         self.title = title
@@ -932,11 +948,20 @@ private struct CategoryItemsView: View {
         self.onDelete = onDelete
         self.onDeleteItem = onDeleteItem
         self.onRecategorizeToCategory = onRecategorizeToCategory
+        self.onUpdatePin = onUpdatePin
         _displayedItems = State(initialValue: items)
     }
 
     private var sortedItems: [SharedItem] {
-        displayedItems.sorted { $0.createdAt > $1.createdAt }
+        displayedItems.sorted {
+            if $0.isPinned != $1.isPinned {
+                return $0.isPinned
+            }
+            if $0.createdAt != $1.createdAt {
+                return $0.createdAt > $1.createdAt
+            }
+            return $0.id.uuidString < $1.id.uuidString
+        }
     }
 
     var body: some View {
@@ -961,7 +986,12 @@ private struct CategoryItemsView: View {
                             categories: categories,
                             onDelete: onDelete,
                             onDeleteItem: onDeleteItem,
-                            onRecategorize: onRecategorizeToCategory
+                            onRecategorize: onRecategorizeToCategory,
+                            onTogglePin: { item in
+                                guard let updatedItem = onUpdatePin(item, !item.isPinned) else { return }
+                                guard let index = displayedItems.firstIndex(where: { $0.id == updatedItem.id }) else { return }
+                                displayedItems[index] = updatedItem
+                            }
                         )
                     }
                 }
@@ -991,6 +1021,7 @@ private struct CategorizedItemRow: View {
     let onDelete: (SharedItem) -> Void
     let onDeleteItem: (SharedItem) -> Void
     let onRecategorize: (SharedItem, UUID?) -> Void
+    let onTogglePin: (SharedItem) -> Void
     @State private var isShowingRecategorization = false
     @State private var isShowingDeleteConfirmation = false
 
@@ -1004,8 +1035,20 @@ private struct CategorizedItemRow: View {
             onDetailDelete: onDeleteItem,
             onRecategorize: { _ in
                 isShowingRecategorization = true
-            }
+            },
+            pinAction: { onTogglePin(item) }
         )
+        .overlay(alignment: .topLeading) {
+            if item.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.blue)
+                    .padding(8)
+                    .background(.thinMaterial, in: Circle())
+                    .padding(6)
+                    .accessibilityHidden(true)
+            }
+        }
         .alert(copy.deleteConfirmationTitle, isPresented: $isShowingDeleteConfirmation) {
             Button(copy.cancelTitle, role: .cancel) {}
             Button(copy.deleteTitle, role: .destructive) {
@@ -1168,6 +1211,23 @@ private struct SavedItemRow: View {
     let onDelete: (SharedItem) -> Void
     let onDetailDelete: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
+    let pinAction: (() -> Void)?
+
+    init(
+        copy: Copy,
+        item: SharedItem,
+        onDelete: @escaping (SharedItem) -> Void,
+        onDetailDelete: @escaping (SharedItem) -> Void,
+        onRecategorize: @escaping (SharedItem) -> Void,
+        pinAction: (() -> Void)? = nil
+    ) {
+        self.copy = copy
+        self.item = item
+        self.onDelete = onDelete
+        self.onDetailDelete = onDetailDelete
+        self.onRecategorize = onRecategorize
+        self.pinAction = pinAction
+    }
 
     private var iconName: String {
         switch item.kind {
@@ -1222,6 +1282,15 @@ private struct SavedItemRow: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
+            if let pinAction {
+                Button(action: pinAction) {
+                    Label(
+                        item.isPinned ? copy.unpinItemTitle : copy.pinItemTitle,
+                        systemImage: item.isPinned ? "pin.slash" : "pin"
+                    )
+                }
+            }
+
             Button {
                 onRecategorize(item)
             } label: {
