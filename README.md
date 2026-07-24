@@ -113,3 +113,5 @@ ShareGather is intentionally local-first:
 - No required server or cloud storage.
 - Saved content belongs to the user and stays in the local App Group container.
 - New functionality should preserve offline use unless the product requirements explicitly change.
+
+See [PRIVACY.md](PRIVACY.md) for the complete privacy policy, including the optional URL metadata request behavior.

@@ -512,6 +512,7 @@ private struct SettingsView: View {
     let savedItemCount: Int
     let onClearAllSavedContent: (Bool) -> Void
     @State private var isShowingClearAllItemsChoice = false
+    @State private var isShowingPrivacyPolicy = false
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguage) ?? .english
@@ -523,7 +524,7 @@ private struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section(copy.languageTitle) {
+            Section(copy.preferencesTitle) {
                 Picker(copy.languageTitle, selection: $selectedLanguage) {
                     ForEach(AppLanguage.allCases) { language in
                         Text(language.displayName)
@@ -538,11 +539,18 @@ private struct SettingsView: View {
                 } label: {
                     HStack {
                         Image(systemName: "trash")
-                        Spacer()
                         Text(copy.clearAllItemsTitle)
                     }
                 }
                 .disabled(savedItemCount == 0)
+            }
+
+            Section(copy.applicationInformationTitle) {
+                Button {
+                    isShowingPrivacyPolicy = true
+                } label: {
+                    Label(copy.privacyPolicyTitle, systemImage: "hand.raised")
+                }
             }
         }
         .navigationTitle(copy.settingsTitle)
@@ -561,6 +569,10 @@ private struct SettingsView: View {
             Button(copy.cancelTitle, role: .cancel) {}
         } message: {
             Text(copy.clearAllItemsChoiceMessage(savedItemCount))
+        }
+        .sheet(isPresented: $isShowingPrivacyPolicy) {
+            PrivacyPolicySheet(copy: copy)
+                .presentationDetents([.large])
         }
     }
 }
@@ -581,8 +593,10 @@ private struct Copy {
     }
 
     var appName: String { text("app.name") }
+    var preferencesTitle: String { text("settings.preferences.title") }
     var languageTitle: String { text("app.language.title") }
     var settingsTitle: String { text("settings.title") }
+    var applicationInformationTitle: String { text("settings.application.information.title") }
     var dangerZoneTitle: String { text("settings.danger.title") }
     var clearAllItemsTitle: String { text("settings.clear.items") }
     var clearAllItemsChoiceTitle: String { text("settings.clear.items.choice.title") }
@@ -596,6 +610,27 @@ private struct Copy {
     var batchDeleteConfirmationTitle: String { text("item.batch.delete.title") }
     var privacyTitle: String { text("privacy.title") }
     var privacySubtitle: String { text("privacy.subtitle") }
+    var privacyPolicyTitle: String { text("privacy.policy.title") }
+    var privacyPolicyIntroduction: String { text("privacy.policy.introduction") }
+    var privacyPolicyInformationTitle: String { text("privacy.policy.information.title") }
+    var privacyPolicyInformationIntroduction: String { text("privacy.policy.information.introduction") }
+    var privacyPolicyStoredContent: String { text("privacy.policy.information.content") }
+    var privacyPolicyStoredMetadata: String { text("privacy.policy.information.metadata") }
+    var privacyPolicyStoredPreferences: String { text("privacy.policy.information.preferences") }
+    var privacyPolicyInformationDetail: String { text("privacy.policy.information.detail") }
+    var privacyPolicyNoAccountTitle: String { text("privacy.policy.no.account.title") }
+    var privacyPolicyNoAccountDetail: String { text("privacy.policy.no.account.detail") }
+    var privacyPolicyMetadataTitle: String { text("privacy.policy.metadata.title") }
+    var privacyPolicyMetadataDetail: String { text("privacy.policy.metadata.detail") }
+    var privacyPolicyMetadataThirdPartyDetail: String { text("privacy.policy.metadata.third.party.detail") }
+    var privacyPolicyChoicesTitle: String { text("privacy.policy.choices.title") }
+    var privacyPolicyChoicesDetail: String { text("privacy.policy.choices.detail") }
+    var privacyPolicyChangesTitle: String { text("privacy.policy.changes.title") }
+    var privacyPolicyChangesDetail: String { text("privacy.policy.changes.detail") }
+    var privacyPolicyContactTitle: String { text("privacy.policy.contact.title") }
+    var privacyPolicyContactDetail: String { text("privacy.policy.contact.detail") }
+    var privacyPolicyRepositoryLinkTitle: String { text("privacy.policy.repository.link.title") }
+    var privacyPolicyRepositoryURL: String { text("privacy.policy.repository.url") }
     var emptyTitle: String { text("empty.title") }
     var emptyDescription: String { text("empty.description") }
     var shareCardTitle: String { text("share.card.title") }
@@ -648,6 +683,10 @@ private struct Copy {
 
     func clearAllItemsChoiceMessage(_ count: Int) -> String {
         text("settings.clear.items.choice.message").replacingOccurrences(of: "%d", with: "\(count)")
+    }
+
+    func privacyPolicyLastUpdated(_ date: Date) -> String {
+        text("privacy.policy.last.updated").replacingOccurrences(of: "%@", with: formattedDate(date))
     }
 
     func batchDeleteConfirmationMessage(_ count: Int) -> String {
@@ -1844,6 +1883,123 @@ private struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private struct PrivacyPolicySheet: View {
+    let copy: Copy
+    @Environment(\.dismiss) private var dismiss
+
+    private var lastUpdated: Date {
+        Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: 2026, month: 7, day: 24)
+        )!
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Label(copy.privacyPolicyTitle, systemImage: "hand.raised.fill")
+                        .font(.title3.weight(.bold))
+
+                    Text(copy.privacyPolicyLastUpdated(lastUpdated))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Text(copy.privacyPolicyIntroduction)
+                        .foregroundStyle(.secondary)
+
+                    PrivacyPolicySection(
+                        title: copy.privacyPolicyInformationTitle,
+                        paragraphs: [
+                            copy.privacyPolicyInformationIntroduction,
+                            copy.privacyPolicyInformationDetail
+                        ],
+                        bullets: [
+                            copy.privacyPolicyStoredContent,
+                            copy.privacyPolicyStoredMetadata,
+                            copy.privacyPolicyStoredPreferences
+                        ]
+                    )
+
+                    PrivacyPolicySection(
+                        title: copy.privacyPolicyNoAccountTitle,
+                        paragraphs: [copy.privacyPolicyNoAccountDetail]
+                    )
+
+                    PrivacyPolicySection(
+                        title: copy.privacyPolicyMetadataTitle,
+                        paragraphs: [
+                            copy.privacyPolicyMetadataDetail,
+                            copy.privacyPolicyMetadataThirdPartyDetail
+                        ]
+                    )
+
+                    PrivacyPolicySection(
+                        title: copy.privacyPolicyChoicesTitle,
+                        paragraphs: [copy.privacyPolicyChoicesDetail]
+                    )
+
+                    PrivacyPolicySection(
+                        title: copy.privacyPolicyChangesTitle,
+                        paragraphs: [copy.privacyPolicyChangesDetail]
+                    )
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(copy.privacyPolicyContactTitle)
+                            .font(.headline)
+
+                        Text(copy.privacyPolicyContactDetail)
+
+                        Link(
+                            copy.privacyPolicyRepositoryLinkTitle,
+                            destination: URL(string: copy.privacyPolicyRepositoryURL)!
+                        )
+                    }
+                }
+                .padding(24)
+            }
+            .navigationTitle(copy.privacyPolicyTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(copy.done) {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct PrivacyPolicySection: View {
+    let title: String
+    let paragraphs: [String]
+    var bullets: [String] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+
+            ForEach(paragraphs, id: \.self) { paragraph in
+                Text(paragraph)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !bullets.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(bullets, id: \.self) { bullet in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("•")
+                            Text(bullet)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private struct ShareInstructionsSheet: View {
