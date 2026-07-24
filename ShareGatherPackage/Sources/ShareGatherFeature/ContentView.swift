@@ -16,6 +16,18 @@ private struct CategoryItemFramePreferenceKey: PreferenceKey {
     }
 }
 
+private func orderedSavedItems(_ items: [SharedItem]) -> [SharedItem] {
+    items.sorted {
+        if $0.isPinned != $1.isPinned {
+            return $0.isPinned
+        }
+        if $0.createdAt != $1.createdAt {
+            return $0.createdAt > $1.createdAt
+        }
+        return $0.id.uuidString < $1.id.uuidString
+    }
+}
+
 public struct ContentView: View {
     @AppStorage("appLanguage") private var selectedLanguage = AppLanguage.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -925,7 +937,7 @@ private struct RecentSavedItemsSection: View {
     let onRecategorize: (SharedItem) -> Void
 
     private var recentItems: [SharedItem] {
-        Array(items.sorted { $0.createdAt > $1.createdAt }.prefix(3))
+        Array(orderedSavedItems(items).prefix(3))
     }
 
     var body: some View {
@@ -1214,15 +1226,7 @@ private struct CategoryItemsView: View {
     }
 
     private var sortedItems: [SharedItem] {
-        displayedItems.sorted {
-            if $0.isPinned != $1.isPinned {
-                return $0.isPinned
-            }
-            if $0.createdAt != $1.createdAt {
-                return $0.createdAt > $1.createdAt
-            }
-            return $0.id.uuidString < $1.id.uuidString
-        }
+        orderedSavedItems(displayedItems)
     }
 
     var body: some View {
@@ -1522,7 +1526,7 @@ private struct SavedItemsList: View {
             item.categoryID.flatMap { categoryMap[$0] } ?? copy.uncategorizedTitle
         }
         return grouped
-            .map { SavedSection(title: $0.key, items: $0.value.sorted { $0.createdAt > $1.createdAt }) }
+            .map { SavedSection(title: $0.key, items: orderedSavedItems($0.value)) }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
@@ -1566,9 +1570,7 @@ private struct UncategorizedItemsSection: View {
     @State private var selectionDragSelectsItems = true
 
     private var uncategorizedItems: [SharedItem] {
-        items
-            .filter { $0.categoryID == nil }
-            .sorted { $0.createdAt > $1.createdAt }
+        orderedSavedItems(items.filter { $0.categoryID == nil })
     }
 
     var body: some View {
