@@ -386,6 +386,78 @@ public final class SharedLibraryStore: @unchecked Sendable {
         return updated
     }
 
+    @discardableResult
+    public func updateItemsCategory(ids: [UUID], categoryID: UUID?) throws -> [SharedItem] {
+        guard !ids.isEmpty else { return [] }
+        guard Set(ids).count == ids.count else { throw SharedLibraryError.itemNotFound }
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let categoryID {
+            let categories = try readUnlocked([SharedCategory].self, from: categoriesURL, missingValue: [])
+            guard categories.contains(where: { $0.id == categoryID }) else {
+                throw SharedLibraryError.categoryNotFound
+            }
+        }
+
+        var items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
+        let requestedIDs = Set(ids)
+        guard requestedIDs.isSubset(of: Set(items.map(\.id))) else {
+            throw SharedLibraryError.itemNotFound
+        }
+
+        var updatedItems: [SharedItem] = []
+        items = items.map { item in
+            guard requestedIDs.contains(item.id) else { return item }
+            let updated = SharedItem(
+                id: item.id,
+                kind: item.kind,
+                value: item.value,
+                title: item.title,
+                description: item.description,
+                thumbnailFilename: item.thumbnailFilename,
+                originalContent: item.originalContent,
+                createdAt: item.createdAt,
+                categoryID: categoryID,
+                isPinned: item.isPinned
+            )
+            updatedItems.append(updated)
+            return updated
+        }
+        try writeUnlocked(items, to: itemsURL)
+        return updatedItems
+    }
+
+    @discardableResult
+    public func deleteItems(ids: [UUID]) throws -> [UUID] {
+        guard !ids.isEmpty else { return [] }
+        guard Set(ids).count == ids.count else { throw SharedLibraryError.itemNotFound }
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        var items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
+        let requestedIDs = Set(ids)
+        let deletedItems = items.filter { requestedIDs.contains($0.id) }
+        guard deletedItems.count == ids.count else { throw SharedLibraryError.itemNotFound }
+
+        items.removeAll { requestedIDs.contains($0.id) }
+        try writeUnlocked(items, to: itemsURL)
+
+        let imagesDirectory = baseDirectory.appendingPathComponent("Images", isDirectory: true)
+        let thumbnailsDirectory = baseDirectory.appendingPathComponent("Thumbnails", isDirectory: true)
+        for item in deletedItems where item.kind == .image {
+            try? FileManager.default.removeItem(at: imagesDirectory.appendingPathComponent(item.value))
+        }
+        for item in deletedItems {
+            if let thumbnailFilename = item.thumbnailFilename {
+                try? FileManager.default.removeItem(at: thumbnailsDirectory.appendingPathComponent(thumbnailFilename))
+            }
+        }
+        return ids
+    }
+
     public func deleteItem(id: UUID) throws {
         lock.lock()
         defer { lock.unlock() }

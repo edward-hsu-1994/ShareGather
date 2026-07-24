@@ -64,7 +64,9 @@ public struct ContentView: View {
                         onReorderCategories: {
                             isShowingCategoryReordering = true
                         },
-                        onUpdatePin: updateItemPin
+                        onUpdatePin: updateItemPin,
+                        onDeleteItems: deleteItems,
+                        onMoveItems: moveItems
                     ) {
                         newCategoryName = ""
                         isShowingCreateCategory = true
@@ -258,6 +260,24 @@ public struct ContentView: View {
         }
         reloadLibrary()
         return updatedItem
+    }
+
+    private func deleteItems(_ itemIDs: [UUID]) -> [UUID]? {
+        guard let store = try? SharedLibraryStore(),
+              let deletedIDs = try? store.deleteItems(ids: itemIDs) else {
+            return nil
+        }
+        reloadLibrary()
+        return deletedIDs
+    }
+
+    private func moveItems(_ itemIDs: [UUID], to categoryID: UUID?) -> [SharedItem]? {
+        guard let store = try? SharedLibraryStore(),
+              let updatedItems = try? store.updateItemsCategory(ids: itemIDs, categoryID: categoryID) else {
+            return nil
+        }
+        reloadLibrary()
+        return updatedItems
     }
 
     private var deleteAlertBinding: Binding<Bool> {
@@ -507,6 +527,10 @@ private struct Copy {
     var clearAllItemsAndCategoriesTitle: String { text("settings.clear.items.delete.categories") }
     var pinItemTitle: String { text("item.pin") }
     var unpinItemTitle: String { text("item.unpin") }
+    var selectTitle: String { text("common.select") }
+    var batchMoveTitle: String { text("item.batch.move") }
+    var batchDeleteTitle: String { text("item.batch.delete") }
+    var batchDeleteConfirmationTitle: String { text("item.batch.delete.title") }
     var privacyTitle: String { text("privacy.title") }
     var privacySubtitle: String { text("privacy.subtitle") }
     var emptyTitle: String { text("empty.title") }
@@ -561,6 +585,10 @@ private struct Copy {
 
     func clearAllItemsChoiceMessage(_ count: Int) -> String {
         text("settings.clear.items.choice.message").replacingOccurrences(of: "%d", with: "\(count)")
+    }
+
+    func batchDeleteConfirmationMessage(_ count: Int) -> String {
+        text("item.batch.delete.message").replacingOccurrences(of: "%d", with: "\(count)")
     }
 
     func categoryContainsItemsMessage(_ count: Int) -> String {
@@ -735,6 +763,8 @@ private struct CategoryOverview: View {
     let onDeleteCategory: (SharedCategory) -> Void
     let onReorderCategories: () -> Void
     let onUpdatePin: (SharedItem, Bool) -> SharedItem?
+    let onDeleteItems: ([UUID]) -> [UUID]?
+    let onMoveItems: ([UUID], UUID?) -> [SharedItem]?
     let onCreateCategory: () -> Void
 
     private var countsByCategory: [UUID: Int] {
@@ -793,7 +823,9 @@ private struct CategoryOverview: View {
                                 onDelete: onDelete,
                                 onDeleteItem: onDeleteItem,
                                 onRecategorizeToCategory: onRecategorizeToCategory,
-                                onUpdatePin: onUpdatePin
+                                onUpdatePin: onUpdatePin,
+                                onDeleteItems: onDeleteItems,
+                                onMoveItems: onMoveItems
                             )
                         } label: {
                             CategoryCard(
@@ -928,6 +960,12 @@ private struct CategoryItemsView: View {
     let categoryID: UUID
     let onRecategorizeToCategory: (SharedItem, UUID?) -> Void
     let onUpdatePin: (SharedItem, Bool) -> SharedItem?
+    let onDeleteItems: ([UUID]) -> [UUID]?
+    let onMoveItems: ([UUID], UUID?) -> [SharedItem]?
+    @State private var isSelecting = false
+    @State private var selectedItemIDs: Set<UUID> = []
+    @State private var isShowingBatchMove = false
+    @State private var isShowingBatchDeleteConfirmation = false
 
     init(
         copy: Copy,
@@ -938,7 +976,9 @@ private struct CategoryItemsView: View {
         onDelete: @escaping (SharedItem) -> Void,
         onDeleteItem: @escaping (SharedItem) -> Void,
         onRecategorizeToCategory: @escaping (SharedItem, UUID?) -> Void,
-        onUpdatePin: @escaping (SharedItem, Bool) -> SharedItem?
+        onUpdatePin: @escaping (SharedItem, Bool) -> SharedItem?,
+        onDeleteItems: @escaping ([UUID]) -> [UUID]?,
+        onMoveItems: @escaping ([UUID], UUID?) -> [SharedItem]?
     ) {
         self.copy = copy
         self.title = title
@@ -949,6 +989,8 @@ private struct CategoryItemsView: View {
         self.onDeleteItem = onDeleteItem
         self.onRecategorizeToCategory = onRecategorizeToCategory
         self.onUpdatePin = onUpdatePin
+        self.onDeleteItems = onDeleteItems
+        self.onMoveItems = onMoveItems
         _displayedItems = State(initialValue: items)
     }
 
@@ -991,6 +1033,15 @@ private struct CategoryItemsView: View {
                                 guard let updatedItem = onUpdatePin(item, !item.isPinned) else { return }
                                 guard let index = displayedItems.firstIndex(where: { $0.id == updatedItem.id }) else { return }
                                 displayedItems[index] = updatedItem
+                            },
+                            isSelecting: isSelecting,
+                            isSelected: selectedItemIDs.contains(item.id),
+                            onToggleSelection: {
+                                if selectedItemIDs.contains(item.id) {
+                                    selectedItemIDs.remove(item.id)
+                                } else {
+                                    selectedItemIDs.insert(item.id)
+                                }
                             }
                         )
                     }
@@ -1002,6 +1053,61 @@ private struct CategoryItemsView: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(isSelecting ? copy.cancelTitle : copy.selectTitle) {
+                    isSelecting.toggle()
+                    if !isSelecting { selectedItemIDs.removeAll() }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if isSelecting {
+                HStack(spacing: 12) {
+                    Button {
+                        isShowingBatchMove = true
+                    } label: {
+                        Label(copy.batchMoveTitle, systemImage: "folder")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(selectedItemIDs.isEmpty)
+
+                    Button(role: .destructive) {
+                        isShowingBatchDeleteConfirmation = true
+                    } label: {
+                        Label(copy.batchDeleteTitle, systemImage: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(selectedItemIDs.isEmpty)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(.bar)
+            }
+        }
+        .sheet(isPresented: $isShowingBatchMove) {
+            CategorySelectionSheet(copy: copy, categories: categories, excludingCategoryID: categoryID) { categoryID in
+                let selectedIDs = Array(selectedItemIDs)
+                guard onMoveItems(selectedIDs, categoryID) != nil else { return }
+                displayedItems.removeAll { selectedItemIDs.contains($0.id) }
+                selectedItemIDs.removeAll()
+                isSelecting = false
+                isShowingBatchMove = false
+            }
+        }
+        .alert(copy.batchDeleteConfirmationTitle, isPresented: $isShowingBatchDeleteConfirmation) {
+            Button(copy.cancelTitle, role: .cancel) {}
+            Button(copy.batchDeleteTitle, role: .destructive) {
+                let selectedIDs = Array(selectedItemIDs)
+                guard onDeleteItems(selectedIDs) != nil else { return }
+                displayedItems.removeAll { selectedItemIDs.contains($0.id) }
+                selectedItemIDs.removeAll()
+                isSelecting = false
+            }
+        } message: {
+            Text(copy.batchDeleteConfirmationMessage(selectedItemIDs.count))
+        }
         .onReceive(NotificationCenter.default.publisher(for: .sharedItemCategoryDidChange)) { notification in
             guard let updatedItem = notification.object as? SharedItem,
                   updatedItem.categoryID != categoryID else { return }
@@ -1022,6 +1128,9 @@ private struct CategorizedItemRow: View {
     let onDeleteItem: (SharedItem) -> Void
     let onRecategorize: (SharedItem, UUID?) -> Void
     let onTogglePin: (SharedItem) -> Void
+    let isSelecting: Bool
+    let isSelected: Bool
+    let onToggleSelection: () -> Void
     @State private var isShowingRecategorization = false
     @State private var isShowingDeleteConfirmation = false
 
@@ -1038,6 +1147,20 @@ private struct CategorizedItemRow: View {
             },
             pinAction: { onTogglePin(item) }
         )
+        .allowsHitTesting(!isSelecting)
+        .overlay {
+            if isSelecting {
+                Button(action: onToggleSelection) {
+                    Color.clear
+                }
+                .overlay(alignment: .trailing) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(isSelected ? .blue : .secondary)
+                        .padding(10)
+                }
+            }
+        }
         .overlay(alignment: .topLeading) {
             if item.isPinned {
                 Image(systemName: "pin.fill")
@@ -1069,7 +1192,20 @@ private struct CategorizedItemRow: View {
 private struct CategorySelectionSheet: View {
     let copy: Copy
     let categories: [SharedCategory]
+    let excludingCategoryID: UUID?
     let onSelect: (UUID?) -> Void
+
+    init(
+        copy: Copy,
+        categories: [SharedCategory],
+        excludingCategoryID: UUID? = nil,
+        onSelect: @escaping (UUID?) -> Void
+    ) {
+        self.copy = copy
+        self.categories = categories
+        self.excludingCategoryID = excludingCategoryID
+        self.onSelect = onSelect
+    }
 
     var body: some View {
         NavigationStack {
@@ -1081,7 +1217,7 @@ private struct CategorySelectionSheet: View {
                 }
 
                 Section(copy.categoriesTitle) {
-                    ForEach(categories) { category in
+                    ForEach(categories.filter { $0.id != excludingCategoryID }) { category in
                         Button {
                             onSelect(category.id)
                         } label: {
