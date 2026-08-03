@@ -22,7 +22,7 @@ import Testing
     #expect(eventStore.requestCount == 1)
     let payload = try #require(eventStore.savedPayload)
     #expect(payload.title == "Read: iOS Development Guide")
-    #expect(payload.notes == "From ShareGather")
+    #expect(payload.notes == "From ShareGather\n\nsharegather://bookmark/123")
     #expect(payload.deepLinkURL == deepLinkURL)
     #expect(payload.alarmDate == scheduledAt)
     #expect(payload.scheduledDateComponents.calendar == calendar)
@@ -39,6 +39,17 @@ import Testing
 
     #expect(eventStore.requestCount == 0)
     #expect(eventStore.savedPayload != nil)
+}
+
+@MainActor
+@Test func reminderWritesDeepLinkIntoVisibleNotes() async throws {
+    let eventStore = TestReminderEventStore(authorizationStatus: .fullAccess)
+    let service = ReminderService(eventStore: eventStore, calendar: .current)
+
+    try await service.createReminder(from: makeDraft())
+
+    let payload = try #require(eventStore.savedPayload)
+    #expect(payload.notes == "sharegather://bookmark/123")
 }
 
 @MainActor

@@ -67,7 +67,7 @@ public final class ReminderService {
 
         let payload = ReminderPayload(
             title: title,
-            notes: normalizedNotes(draft.notes),
+            notes: visibleNotes(draft.notes, deepLinkURL: draft.deepLinkURL),
             deepLinkURL: draft.deepLinkURL,
             scheduledDateComponents: dateComponents(for: draft.scheduledAt),
             alarmDate: draft.scheduledAt
@@ -107,9 +107,15 @@ public final class ReminderService {
         }
     }
 
-    private func normalizedNotes(_ notes: String?) -> String? {
-        guard let notes else { return nil }
-        return notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
+    private func visibleNotes(_ notes: String?, deepLinkURL: URL) -> String {
+        let trimmedNotes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var parts: [String] = []
+        if let trimmedNotes, !trimmedNotes.isEmpty {
+            parts.append(trimmedNotes)
+        }
+        parts.append(deepLinkURL.absoluteString)
+
+        return parts.joined(separator: "\n\n")
     }
 
     private func dateComponents(for date: Date) -> DateComponents {

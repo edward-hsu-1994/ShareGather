@@ -35,4 +35,4 @@ Images and thumbnails are referenced by filenames. A persisted item must retain 
 
 ZIPFoundation is used only by `SharedLibraryStore` for ZIP backup creation and extraction. It does not add a network service, account flow, or synchronization behavior.
 
-EventKit is used only after a user explicitly chooses to create a reminder. `SharedItemDeepLink` creates `sharegather://bookmark/<UUID>` links that the main app resolves to a saved-item detail page. Reminder identifiers are not persisted or included in backups.
+EventKit is used only after a user explicitly chooses to create a reminder. `SharedItemDeepLink` creates `sharegather://bookmark/<UUID>` links that the main app resolves to a saved-item detail page. Each reminder stores that link in EventKit's URL field and appends the raw link to its notes because the Reminders UI does not guarantee a visible URL control. Reminder identifiers are not persisted or included in backups.
