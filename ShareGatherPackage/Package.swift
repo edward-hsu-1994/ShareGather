@@ -36,7 +36,10 @@ let package = Package(
         ),
         .target(
             name: "ShareGatherFeature",
-            dependencies: ["ShareGatherStorage"]
+            dependencies: [
+                "ShareGatherReminders",
+                "ShareGatherStorage"
+            ]
         ),
         .target(
             name: "ShareGatherReminders"

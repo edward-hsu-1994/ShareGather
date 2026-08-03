@@ -82,6 +82,10 @@ public final class ReminderService {
         }
     }
 
+    public func requestAccess() async throws {
+        try await ensureWriteAccess()
+    }
+
     private func ensureWriteAccess() async throws {
         switch eventStore.authorizationStatus {
         case .fullAccess:

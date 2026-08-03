@@ -34,4 +34,4 @@ New third-party dependencies require explicit user approval. Prefer Apple framew
 - Update or add tests for storage, import, export, and backup changes.
 - Test backup export to Files or a cloud-drive app, then test both merge and replace import behavior.
 - Verify category visibility in the Share Extension after storage changes.
-- For Reminders changes, test on a physical device with first-time allow, deny, no default list, and successful reminder creation. Verify the resulting deep link from both a cold and warm app launch.
+- For Reminders changes, test the Settings access entry point plus the Share Extension flow on a physical device with first-time allow, deny, no default list, and successful reminder creation. Verify the resulting deep link from both a cold and warm app launch.

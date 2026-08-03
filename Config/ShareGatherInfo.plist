@@ -37,6 +37,10 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>ShareGather needs access to Reminders when you choose to create a reading reminder for a saved item.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>ShareGather needs access to Reminders when you choose to create a reading reminder for a saved item.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

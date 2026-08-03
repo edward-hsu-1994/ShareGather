@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import ShareGatherReminders
 import ShareGatherStorage
 
 private extension Notification.Name {
@@ -578,6 +579,9 @@ private struct SettingsView: View {
     @State private var exportedBackupURL: URL?
     @State private var isShowingBackupImportResult = false
     @State private var didImportBackupSucceed = false
+    @State private var reminderService = ReminderService()
+    @State private var reminderAuthorizationStatus = ReminderAuthorizationStatus.notDetermined
+    @State private var isRequestingReminderAccess = false
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguage) ?? .english
@@ -596,6 +600,10 @@ private struct SettingsView: View {
                             .tag(language.rawValue)
                     }
                 }
+            }
+
+            Section(copy.reminderAccessSectionTitle) {
+                reminderAccessContent
             }
 
             Section(copy.dangerZoneTitle) {
@@ -641,6 +649,9 @@ private struct SettingsView: View {
         .navigationTitle(copy.settingsTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        .onAppear {
+            reminderAuthorizationStatus = reminderService.authorizationStatus
+        }
         .alert(
             copy.clearAllItemsChoiceTitle,
             isPresented: $isShowingClearAllItemsChoice
@@ -685,6 +696,43 @@ private struct SettingsView: View {
             Button(copy.done) {}
         } message: {
             Text(didImportBackupSucceed ? copy.importBackupSuccessMessage : copy.importBackupFailureMessage)
+        }
+    }
+
+    @ViewBuilder
+    private var reminderAccessContent: some View {
+        switch reminderAuthorizationStatus {
+        case .notDetermined:
+            Button {
+                requestReminderAccess()
+            } label: {
+                Label(copy.reminderAccessRequestTitle, systemImage: "checkmark.shield")
+            }
+            .disabled(isRequestingReminderAccess)
+        case .fullAccess:
+            Label(copy.reminderAccessGrantedTitle, systemImage: "checkmark.circle")
+                .foregroundStyle(.green)
+        case .denied, .restricted:
+            Text(copy.reminderAccessDeniedMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button {
+                guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                UIApplication.shared.open(url)
+            } label: {
+                Label(copy.reminderAccessOpenSettingsTitle, systemImage: "gear")
+            }
+            .disabled(reminderAuthorizationStatus == .restricted)
+        }
+    }
+
+    private func requestReminderAccess() {
+        isRequestingReminderAccess = true
+        Task { @MainActor in
+            defer { isRequestingReminderAccess = false }
+            _ = try? await reminderService.requestAccess()
+            reminderAuthorizationStatus = reminderService.authorizationStatus
         }
     }
 
@@ -759,6 +807,11 @@ private struct Copy {
     var languageTitle: String { text("app.language.title") }
     var settingsTitle: String { text("settings.title") }
     var applicationInformationTitle: String { text("settings.application.information.title") }
+    var reminderAccessSectionTitle: String { text("settings.reminder.access.title") }
+    var reminderAccessRequestTitle: String { text("settings.reminder.access.request") }
+    var reminderAccessGrantedTitle: String { text("settings.reminder.access.granted") }
+    var reminderAccessDeniedMessage: String { text("settings.reminder.access.denied.message") }
+    var reminderAccessOpenSettingsTitle: String { text("settings.reminder.access.open.settings") }
     var exportBackupTitle: String { text("backup.export") }
     var importBackupTitle: String { text("backup.import") }
     var mergeBackupTitle: String { text("backup.merge") }

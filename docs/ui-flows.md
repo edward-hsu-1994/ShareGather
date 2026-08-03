@@ -29,3 +29,5 @@ Import displays a result dialog for both successful and failed restore attempts.
 The Share Extension accepts URL, text, and image attachments and offers Uncategorized plus available categories as destinations. URL metadata loading is optional and must never block saving the original shared payload.
 
 After the item has been saved, the extension asks whether to set a reading reminder. Choosing not to does not request Reminders access. Choosing to continue presents editable title and notes fields plus a date-and-time picker, then requests access only when the user confirms creation. Permission denial, a missing default Reminders list, or an EventKit error leaves the saved item intact. The resulting reminder links to `sharegather://bookmark/<UUID>`, which opens the matching saved-item detail page when it is still available.
+
+Settings also provides a Reminders access section. It can request first-time access before sharing; when access was denied, it opens the app's system settings so the user can re-enable it.
