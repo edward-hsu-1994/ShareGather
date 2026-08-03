@@ -16,6 +16,10 @@
 	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>ShareGather needs access to Reminders when you choose to create a reading reminder for a saved item.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>ShareGather needs access to Reminders when you choose to create a reading reminder for a saved item.</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>

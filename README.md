@@ -36,6 +36,7 @@ ShareGather is a local-first iPhone app for saving URLs, text, and images from t
 - Show recent saved items on the home screen.
 - Preserve original shared content while optionally enriching URLs with a title, description/source, and thumbnail.
 - Open, share, or delete a saved item from its detail view.
+- After saving an item from the Share Extension, optionally create a scheduled reading reminder that opens the saved item in ShareGather.
 - Read the in-app privacy policy and open the project repository from Settings.
 
 ## Backup and Restore
@@ -75,6 +76,8 @@ ShareGather is intentionally local-first:
 - No required server or cloud storage.
 - No analytics, advertising, or tracking integrations.
 - Saved content belongs to the user and stays in the local App Group container.
+
+Creating a reading reminder is optional. When you choose it, the reminder title, notes, scheduled time, and a link back to the saved item are written to your Reminders database, which may sync through the accounts configured in Reminders. ShareGather still does not operate a server or cloud synchronization service.
 
 For shared URLs, iOS Link Presentation may optionally request preview metadata such as a title or thumbnail. This can contact the linked website, but saving the original URL does not depend on metadata loading.
 

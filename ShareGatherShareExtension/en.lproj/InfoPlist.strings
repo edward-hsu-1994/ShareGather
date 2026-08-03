@@ -1,1 +1,3 @@
 "CFBundleDisplayName" = "Save to ShareGather";
+"NSRemindersFullAccessUsageDescription" = "ShareGather needs access to Reminders when you choose to create a reading reminder for a saved item.";
+"NSRemindersUsageDescription" = "ShareGather needs access to Reminders when you choose to create a reading reminder for a saved item.";

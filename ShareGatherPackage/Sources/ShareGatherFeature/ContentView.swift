@@ -60,6 +60,8 @@ public struct ContentView: View {
     @State private var isShowingUncategorizedBatchDeleteConfirmation = false
     @State private var savedItems: [SharedItem] = []
     @State private var categories: [SharedCategory] = []
+    @State private var navigationPath: [UUID] = []
+    @State private var isShowingDeepLinkUnavailable = false
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguage) ?? .english
@@ -70,7 +72,7 @@ public struct ContentView: View {
     }
 
     public var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     OfflinePrivacyBanner(copy: copy)
@@ -164,6 +166,17 @@ public struct ContentView: View {
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle(copy.appName)
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: UUID.self) { itemID in
+                if let item = savedItems.first(where: { $0.id == itemID }) {
+                    SavedItemDetailView(copy: copy, item: item, onDelete: deleteItem)
+                } else {
+                    ContentUnavailableView(
+                        copy.deepLinkUnavailableTitle,
+                        systemImage: "bookmark.slash",
+                        description: Text(copy.deepLinkUnavailableMessage)
+                    )
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -220,6 +233,7 @@ public struct ContentView: View {
             .onChange(of: scenePhase) { _, newPhase in
                 handleScenePhaseChange(newPhase)
             }
+            .onOpenURL(perform: openDeepLink)
             .alert(copy.createCategoryTitle, isPresented: $isShowingCreateCategory) {
                 TextField(copy.categoryNamePlaceholder, text: $newCategoryName)
                 Button(copy.cancelTitle, role: .cancel) {}
@@ -304,6 +318,11 @@ public struct ContentView: View {
                     deletesItems: categoryDeletionDisposition == .deleteItems
                 ))
             }
+            .alert(copy.deepLinkUnavailableTitle, isPresented: $isShowingDeepLinkUnavailable) {
+                Button(copy.done) {}
+            } message: {
+                Text(copy.deepLinkUnavailableMessage)
+            }
         }
     }
 
@@ -326,6 +345,22 @@ public struct ContentView: View {
         if phase == .active {
             reloadLibrary()
         }
+    }
+
+    private func openDeepLink(_ url: URL) {
+        guard let itemID = SharedItemDeepLink.itemID(from: url) else {
+            isShowingDeepLinkUnavailable = true
+            return
+        }
+
+        reloadLibrary()
+        guard savedItems.contains(where: { $0.id == itemID }) else {
+            navigationPath.removeAll()
+            isShowingDeepLinkUnavailable = true
+            return
+        }
+
+        navigationPath = [itemID]
     }
 
     private func createCategory() {
@@ -759,6 +794,8 @@ private struct Copy {
     var privacyPolicyMetadataTitle: String { text("privacy.policy.metadata.title") }
     var privacyPolicyMetadataDetail: String { text("privacy.policy.metadata.detail") }
     var privacyPolicyMetadataThirdPartyDetail: String { text("privacy.policy.metadata.third.party.detail") }
+    var privacyPolicyRemindersTitle: String { text("privacy.policy.reminders.title") }
+    var privacyPolicyRemindersDetail: String { text("privacy.policy.reminders.detail") }
     var privacyPolicyBackupTitle: String { text("privacy.policy.backup.title") }
     var privacyPolicyBackupDetail: String { text("privacy.policy.backup.detail") }
     var privacyPolicyChoicesTitle: String { text("privacy.policy.choices.title") }
@@ -791,6 +828,8 @@ private struct Copy {
     var imageTitle: String { text("library.image") }
     var savedDateTitle: String { text("library.saved.date") }
     var imageUnavailableTitle: String { text("library.image.unavailable") }
+    var deepLinkUnavailableTitle: String { text("deep.link.unavailable.title") }
+    var deepLinkUnavailableMessage: String { text("deep.link.unavailable.message") }
     var categoriesTitle: String { text("category.title") }
     var createCategoryTitle: String { text("category.create") }
     var renameCategoryTitle: String { text("category.rename") }
@@ -2035,7 +2074,7 @@ private struct PrivacyPolicySheet: View {
 
     private var lastUpdated: Date {
         Calendar(identifier: .gregorian).date(
-            from: DateComponents(year: 2026, month: 7, day: 24)
+            from: DateComponents(year: 2026, month: 8, day: 3)
         )!
     }
 
@@ -2077,6 +2116,11 @@ private struct PrivacyPolicySheet: View {
                             copy.privacyPolicyMetadataDetail,
                             copy.privacyPolicyMetadataThirdPartyDetail
                         ]
+                    )
+
+                    PrivacyPolicySection(
+                        title: copy.privacyPolicyRemindersTitle,
+                        paragraphs: [copy.privacyPolicyRemindersDetail]
                     )
 
                     PrivacyPolicySection(

@@ -12,12 +12,13 @@ Action Extension ──────┘
 - `ShareGather/ShareGatherApp.swift` starts the SwiftUI app and hosts `ContentView`.
 - `ShareGatherPackage/Sources/ShareGatherFeature/ContentView.swift` owns main-app UI state and feature flows.
 - `ShareGatherPackage/Sources/ShareGatherStorage/` owns shared persistence models, App Group storage, backup handling, and localization support.
+- `ShareGatherPackage/Sources/ShareGatherReminders/` owns the optional EventKit adapter for creating reading reminders.
 - `ShareGatherShareExtension/ShareViewController.swift` receives shared URLs, text, and images; it lets the user choose a category before saving.
 - `ShareGather/SaveToShareGatherIntent.swift` provides the Action-list shortcut for URL and text capture.
 
 ## Data Flow
 
-The Share Extension and App Intent write through `SharedLibraryStore`. URL metadata enrichment uses Link Presentation when available, but saving the original content does not depend on enrichment succeeding. The main app reloads from the shared store when it becomes active.
+The Share Extension and App Intent write through `SharedLibraryStore`. URL metadata enrichment uses Link Presentation when available, but saving the original content does not depend on enrichment succeeding. After a Share Extension save, a user can explicitly opt in to an EventKit reading reminder; an EventKit failure never rolls back the saved item. The main app reloads from the shared store when it becomes active.
 
 The selected language is stored in the App Group preference so the main app and Share Extension use the same language selection.
 
@@ -33,3 +34,5 @@ Images and thumbnails are referenced by filenames. A persisted item must retain 
 ## Dependency Boundary
 
 ZIPFoundation is used only by `SharedLibraryStore` for ZIP backup creation and extraction. It does not add a network service, account flow, or synchronization behavior.
+
+EventKit is used only after a user explicitly chooses to create a reminder. `SharedItemDeepLink` creates `sharegather://bookmark/<UUID>` links that the main app resolves to a saved-item detail page. Reminder identifiers are not persisted or included in backups.
