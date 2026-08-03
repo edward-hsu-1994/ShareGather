@@ -582,6 +582,7 @@ private struct SettingsView: View {
     @State private var reminderService = ReminderService()
     @State private var reminderAuthorizationStatus = ReminderAuthorizationStatus.notDetermined
     @State private var isRequestingReminderAccess = false
+    @State private var isReminderPromptEnabled = SharedGatherLocalization.isReminderPromptEnabled
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguage) ?? .english
@@ -600,6 +601,11 @@ private struct SettingsView: View {
                             .tag(language.rawValue)
                     }
                 }
+
+                Toggle(copy.reminderPromptPreferenceTitle, isOn: $isReminderPromptEnabled)
+                    .onChange(of: isReminderPromptEnabled) { _, enabled in
+                        SharedGatherLocalization.setReminderPromptEnabled(enabled)
+                    }
             }
 
             Section(copy.reminderAccessSectionTitle) {
@@ -805,6 +811,7 @@ private struct Copy {
     var appName: String { text("app.name") }
     var preferencesTitle: String { text("settings.preferences.title") }
     var languageTitle: String { text("app.language.title") }
+    var reminderPromptPreferenceTitle: String { text("settings.reminder.prompt") }
     var settingsTitle: String { text("settings.title") }
     var applicationInformationTitle: String { text("settings.application.information.title") }
     var reminderAccessSectionTitle: String { text("settings.reminder.access.title") }

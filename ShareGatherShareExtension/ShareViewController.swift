@@ -504,6 +504,10 @@ final class ShareViewController: UIViewController {
     }
 
     private func showReminderPrompt(for item: SharedItem) {
+        guard SharedGatherLocalization.isReminderPromptEnabled else {
+            completeRequest()
+            return
+        }
         DispatchQueue.main.async {
             self.activityIndicator.stopAnimating()
             self.statusLabel.text = self.savedTitle
@@ -518,6 +522,10 @@ final class ShareViewController: UIViewController {
             })
             alert.addAction(UIAlertAction(title: self.reminderSetTitle, style: .default) { [weak self] _ in
                 self?.presentReminderForm(for: item)
+            })
+            alert.addAction(UIAlertAction(title: self.text("reminder.prompt.dont.ask.again"), style: .default) { [weak self] _ in
+                SharedGatherLocalization.setReminderPromptEnabled(false)
+                self?.completeRequest()
             })
             self.present(alert, animated: true)
         }

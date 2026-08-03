@@ -2,11 +2,25 @@ import Foundation
 
 public enum SharedGatherLocalization {
     public static let languagePreferenceKey = "appLanguage"
+    public static let reminderPromptEnabledPreferenceKey = "reminderPromptEnabled"
+
+    public static var isReminderPromptEnabled: Bool {
+        let defaults = UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier)
+        return defaults?.object(forKey: reminderPromptEnabledPreferenceKey) as? Bool ?? true
+    }
+
+    public static func setReminderPromptEnabled(_ enabled: Bool) {
+        UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier)?.set(
+            enabled,
+            forKey: reminderPromptEnabledPreferenceKey
+        )
+    }
 
     private static let simplifiedChinese: [String: String] = [
         "app.language.title": "语言",
         "settings.title": "设置",
         "settings.preferences.title": "偏好",
+        "settings.reminder.prompt": "储存后询问阅读提醒",
         "settings.reminder.access.title": "提醒事项访问权限",
         "settings.reminder.access.request": "允许访问提醒事项",
         "settings.reminder.access.granted": "已允许访问提醒事项",
@@ -126,6 +140,7 @@ public enum SharedGatherLocalization {
         "reminder.prompt.message": "收藏已保存。要让 ShareGather 提醒你稍后阅读吗？",
         "reminder.prompt.not.now": "暂时不要",
         "reminder.prompt.set": "设置提醒",
+        "reminder.prompt.dont.ask.again": "以后不用提醒",
         "reminder.form.title": "阅读提醒",
         "reminder.form.reminder.title": "标题",
         "reminder.form.notes": "备注",
