@@ -17,7 +17,7 @@ Physical-device installation requires a registered device, Apple Developer signi
 
 All user-facing strings require English, Traditional Chinese, and Simplified Chinese updates. English and Traditional Chinese are in `Localizable.xcstrings`; Simplified Chinese is in `Localization.swift`. Verify the main app and Share Extension after changing shared language behavior.
 
-When adding an EventKit capability to an extension, localize the applicable `InfoPlist.strings` purpose descriptions as well as the shared UI strings.
+When adding an EventKit capability, localize the applicable main-app and extension `InfoPlist.strings` purpose descriptions as well as the shared UI strings.
 
 ## Privacy Manifests
 
