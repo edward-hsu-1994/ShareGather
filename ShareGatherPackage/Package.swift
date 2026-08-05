@@ -16,6 +16,10 @@ let package = Package(
             name: "ShareGatherStorage",
             targets: ["ShareGatherStorage"]
         ),
+        .library(
+            name: "ShareGatherReminders",
+            targets: ["ShareGatherReminders"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.20")
@@ -32,7 +36,13 @@ let package = Package(
         ),
         .target(
             name: "ShareGatherFeature",
-            dependencies: ["ShareGatherStorage"]
+            dependencies: [
+                "ShareGatherReminders",
+                "ShareGatherStorage"
+            ]
+        ),
+        .target(
+            name: "ShareGatherReminders"
         ),
         .testTarget(
             name: "ShareGatherFeatureTests",
@@ -41,6 +51,10 @@ let package = Package(
                 "ShareGatherStorage",
                 .product(name: "ZIPFoundation", package: "ZIPFoundation")
             ]
+        ),
+        .testTarget(
+            name: "ShareGatherRemindersTests",
+            dependencies: ["ShareGatherReminders"]
         ),
     ]
 )

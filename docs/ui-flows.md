@@ -18,7 +18,7 @@ Long-press item menus expose the actions relevant to the item: pin/unpin when av
 
 Settings is organized into Preferences, Danger Zone, and App Information.
 
-- Preferences contains language selection.
+- Preferences contains language selection and the option to ask about a reading reminder after saving.
 - Danger Zone clears all saved content and lets the user choose whether categories are retained.
 - App Information exposes backup export/import, the Privacy Policy sheet, the GitHub repository, and the official website.
 
@@ -27,3 +27,7 @@ Import displays a result dialog for both successful and failed restore attempts.
 ## Sharing
 
 The Share Extension accepts URL, text, and image attachments and offers Uncategorized plus available categories as destinations. URL metadata loading is optional and must never block saving the original shared payload.
+
+After the item has been saved, the extension asks whether to set a reading reminder when the preference is enabled. Choosing not to does not request Reminders access. Choosing “Don't Ask Again” disables future prompts; the preference can be re-enabled in Settings. Choosing to continue presents editable title and notes fields plus a date-and-time picker, then requests access only when the user confirms creation. Permission denial, a missing default Reminders list, or an EventKit error leaves the saved item intact. The resulting reminder stores `sharegather://bookmark/<UUID>` in EventKit's URL field and visibly appends it to the reminder notes so it can be copied or opened when the Reminders UI recognizes the link.
+
+Settings also provides a Reminders access section. It can request first-time access before sharing; when access was denied, it opens the app's system settings so the user can re-enable it.

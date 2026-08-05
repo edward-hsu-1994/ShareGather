@@ -14,6 +14,8 @@
 		8B41F6A62DEDD25C001A66F9 /* ShareGatherActionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8B41F6A82DEDD25C001A66F9 /* ShareGatherActionExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B41F6B52DEDD25C001A66F9 /* ShareGatherStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6B42DEDD25C001A66F9 /* ShareGatherStorage */; };
 		8B41F6B62DEDD25C001A66F9 /* ShareGatherShareExtension/ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B41F6B72DEDD25C001A66F9 /* ShareGatherShareExtension/ShareViewController.swift */; };
+		C0D3A0012F40000100000001 /* ShareGatherReminders in Frameworks */ = {isa = PBXBuildFile; productRef = C0D3A0012F40000100000002 /* ShareGatherReminders */; };
+		C0D3A0012F40000100000003 /* ShareGatherReminders in Frameworks */ = {isa = PBXBuildFile; productRef = C0D3A0012F40000100000004 /* ShareGatherReminders */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,6 +85,7 @@
 			membershipExceptions = (
 				Debug.xcconfig,
 				Release.xcconfig,
+				ShareGatherInfo.plist,
 				Shared.xcconfig,
 				Tests.xcconfig,
 			);
@@ -148,6 +151,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0D3A0012F40000100000001 /* ShareGatherReminders in Frameworks */,
 				8B41F6962DEDD25C001A66F9 /* ShareGatherStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -156,6 +160,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0D3A0012F40000100000003 /* ShareGatherReminders in Frameworks */,
 				8B41F6B52DEDD25C001A66F9 /* ShareGatherStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -274,6 +279,7 @@
 			);
 			name = ShareGatherShareExtension;
 			packageProductDependencies = (
+				C0D3A0012F40000100000002 /* ShareGatherReminders */,
 				8B41F6952DEDD25C001A66F9 /* ShareGatherStorage */,
 			);
 			productName = ShareGatherShareExtension;
@@ -297,6 +303,7 @@
 			);
 			name = ShareGatherActionExtension;
 			packageProductDependencies = (
+				C0D3A0012F40000100000004 /* ShareGatherReminders */,
 				8B41F6B42DEDD25C001A66F9 /* ShareGatherStorage */,
 			);
 			productName = ShareGatherActionExtension;
@@ -568,7 +575,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = F5QNUA96GU;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/ShareGatherInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_DISPLAY_NAME)";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -593,7 +601,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = F5QNUA96GU;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/ShareGatherInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_DISPLAY_NAME)";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -809,6 +818,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */;
 			productName = ShareGatherStorage;
+		};
+		C0D3A0012F40000100000002 /* ShareGatherReminders */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */;
+			productName = ShareGatherReminders;
+		};
+		C0D3A0012F40000100000004 /* ShareGatherReminders */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8B41F6802DEDD23B001A66F9 /* XCLocalSwiftPackageReference "ShareGatherPackage" */;
+			productName = ShareGatherReminders;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

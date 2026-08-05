@@ -2,11 +2,34 @@ import Foundation
 
 public enum SharedGatherLocalization {
     public static let languagePreferenceKey = "appLanguage"
+    public static let reminderPromptEnabledPreferenceKey = "reminderPromptEnabled"
+
+    public static var isReminderPromptEnabled: Bool {
+        isReminderPromptEnabled(in: UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier))
+    }
+
+    static func isReminderPromptEnabled(in defaults: UserDefaults?) -> Bool {
+        return defaults?.object(forKey: reminderPromptEnabledPreferenceKey) as? Bool ?? true
+    }
+
+    public static func setReminderPromptEnabled(_ enabled: Bool) {
+        setReminderPromptEnabled(enabled, in: UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier))
+    }
+
+    static func setReminderPromptEnabled(_ enabled: Bool, in defaults: UserDefaults?) {
+        defaults?.set(enabled, forKey: reminderPromptEnabledPreferenceKey)
+    }
 
     private static let simplifiedChinese: [String: String] = [
         "app.language.title": "语言",
         "settings.title": "设置",
         "settings.preferences.title": "偏好",
+        "settings.reminder.prompt": "储存后询问阅读提醒",
+        "settings.reminder.access.title": "提醒事项访问权限",
+        "settings.reminder.access.request": "允许访问提醒事项",
+        "settings.reminder.access.granted": "已允许访问提醒事项",
+        "settings.reminder.access.denied.message": "请在“设置”中允许访问提醒事项，以创建阅读提醒。",
+        "settings.reminder.access.open.settings": "打开设置",
         "settings.application.information.title": "应用程序信息",
         "settings.website.link.title": "开启官方网站",
         "settings.website.url": "https://sharegather.edward-hsu.net/",
@@ -42,6 +65,8 @@ public enum SharedGatherLocalization {
         "privacy.policy.metadata.title": "网址元数据请求",
         "privacy.policy.metadata.detail": "对于分享的网址，ShareGather 可能使用 Apple 的 Link Presentation 框架请求预览元数据，例如网页标题或缩图。这项请求是选用的：即使元数据载入失败，原始网址仍会储存。",
         "privacy.policy.metadata.third.party.detail": "发生这类请求时，该网址所对应的网站及其使用的服务可能会收到你的网络信息，例如 IP 地址，并依其隐私政策处理该请求。ShareGather 无法控制这些第三方。",
+        "privacy.policy.reminders.title": "可选的“提醒事项”整合",
+        "privacy.policy.reminders.detail": "只有当你选择建立阅读提醒时，ShareGather 才会将提醒标题、备注、排定时间与收藏链接写入你的“提醒事项”资料库。这些信息可能依你为“提醒事项”设定的账号进行同步；ShareGather 不会为此功能营运服务器或云端同步服务。",
         "privacy.policy.backup.title": "备份导入与导出",
         "privacy.policy.backup.detail": "当你主动导出备份并透过系统分享选单传送时，备份档案可能包含你的收藏、分类、图片和缩图。接收档案的 App 或服务会依其隐私政策处理该档案。导入备份时，ShareGather 会从你选择的档案读取资料并储存在此设备。",
         "privacy.policy.choices.title": "你的选择与资料删除",
@@ -115,6 +140,27 @@ public enum SharedGatherLocalization {
         "share.status.failed": "保存失败",
         "share.category.title": "选择分类",
         "share.category.subtitle": "将这则分享内容保存到适合的位置",
+        "reminder.prompt.title": "要设置阅读提醒吗？",
+        "reminder.prompt.message": "收藏已保存。要让 ShareGather 提醒你稍后阅读吗？",
+        "reminder.prompt.not.now": "暂时不要",
+        "reminder.prompt.set": "设置提醒",
+        "reminder.prompt.dont.ask.again": "以后不用提醒",
+        "reminder.form.title": "阅读提醒",
+        "reminder.form.reminder.title": "标题",
+        "reminder.form.notes": "备注",
+        "reminder.form.date": "提醒时间",
+        "reminder.form.create": "添加提醒",
+        "reminder.default.title": "阅读：%@",
+        "reminder.default.notes": "来自 ShareGather 的收藏。",
+        "reminder.created.title": "提醒已添加",
+        "reminder.created.message": "阅读提醒已添加到“提醒事项”。",
+        "reminder.failure.title": "无法添加提醒",
+        "reminder.failure.access": "收藏已保存，但 ShareGather 无法访问“提醒事项”。你可以在“设置”中允许访问。",
+        "reminder.failure.no.calendar": "没有可用的默认“提醒事项”列表。收藏仍已安全地保存在 ShareGather。",
+        "reminder.failure.invalid.title": "请输入提醒标题。收藏仍已安全地保存在 ShareGather。",
+        "reminder.failure.generic": "收藏已保存，但无法添加提醒。请稍后再试。",
+        "deep.link.unavailable.title": "找不到收藏内容",
+        "deep.link.unavailable.message": "这个收藏可能已被删除，或已无法在此设备上取得。",
         "category.create.new": "创建新分类",
         "category.empty.message": "创建一个分类，将这则分享内容保存到适合的位置。",
         "category.new": "新增分类",
