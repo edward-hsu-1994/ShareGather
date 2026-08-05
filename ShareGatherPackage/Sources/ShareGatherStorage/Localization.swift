@@ -5,15 +5,19 @@ public enum SharedGatherLocalization {
     public static let reminderPromptEnabledPreferenceKey = "reminderPromptEnabled"
 
     public static var isReminderPromptEnabled: Bool {
-        let defaults = UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier)
+        isReminderPromptEnabled(in: UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier))
+    }
+
+    static func isReminderPromptEnabled(in defaults: UserDefaults?) -> Bool {
         return defaults?.object(forKey: reminderPromptEnabledPreferenceKey) as? Bool ?? true
     }
 
     public static func setReminderPromptEnabled(_ enabled: Bool) {
-        UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier)?.set(
-            enabled,
-            forKey: reminderPromptEnabledPreferenceKey
-        )
+        setReminderPromptEnabled(enabled, in: UserDefaults(suiteName: SharedLibraryStore.appGroupIdentifier))
+    }
+
+    static func setReminderPromptEnabled(_ enabled: Bool, in defaults: UserDefaults?) {
+        defaults?.set(enabled, forKey: reminderPromptEnabledPreferenceKey)
     }
 
     private static let simplifiedChinese: [String: String] = [

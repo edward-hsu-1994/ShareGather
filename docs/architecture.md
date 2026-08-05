@@ -20,7 +20,7 @@ Action Extension ──────┘
 
 The Share Extension and App Intent write through `SharedLibraryStore`. URL metadata enrichment uses Link Presentation when available, but saving the original content does not depend on enrichment succeeding. After a Share Extension save, a user can explicitly opt in to an EventKit reading reminder; an EventKit failure never rolls back the saved item. The main app reloads from the shared store when it becomes active.
 
-The selected language is stored in the App Group preference so the main app and Share Extension use the same language selection.
+The selected language and the preference for asking about a reading reminder after saving are stored in App Group preferences so the main app and Share Extension use the same settings. These preferences are not included in backups.
 
 ## Core Models
 

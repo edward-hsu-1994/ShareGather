@@ -10,7 +10,7 @@ When you save content through the iOS Share Sheet or the Save to ShareGather act
 
 - URLs, text, and images that you choose to share with the app.
 - The title, description, source, and thumbnail associated with a saved URL when available.
-- Categories, item order, pinned-item choices, and the app language you select.
+- Categories, item order, pinned-item choices, the app language you select, and whether ShareGather asks about a reading reminder after saving.
 
 This information is stored locally in ShareGather's shared App Group container on your device. It is used only to provide the app's saving, organizing, previewing, and re-sharing features.
 
