@@ -29,6 +29,8 @@ public enum SharedGatherLocalization {
         "settings.reminder.access.request": "允许访问提醒事项",
         "settings.reminder.access.granted": "已允许访问提醒事项",
         "settings.reminder.access.denied.message": "请在“设置”中允许访问提醒事项，以创建阅读提醒。",
+        "settings.reminder.access.writeonly": "仅写入提醒事项权限",
+        "settings.reminder.access.writeonly.message": "提醒事项目前为仅写入权限。请到「设置」开启完整权限以使用更多功能。",
         "settings.reminder.access.open.settings": "打开设置",
         "settings.application.information.title": "应用程序信息",
         "settings.website.link.title": "开启官方网站",

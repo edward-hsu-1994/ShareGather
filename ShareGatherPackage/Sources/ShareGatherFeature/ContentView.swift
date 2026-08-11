@@ -171,11 +171,7 @@ public struct ContentView: View {
                 if let item = savedItems.first(where: { $0.id == itemID }) {
                     SavedItemDetailView(copy: copy, item: item, onDelete: deleteItem)
                 } else {
-                    ContentUnavailableView(
-                        copy.deepLinkUnavailableTitle,
-                        systemImage: "bookmark.slash",
-                        description: Text(copy.deepLinkUnavailableMessage)
-                    )
+                    EmptyView()
                 }
             }
             .toolbar {
@@ -349,19 +345,14 @@ public struct ContentView: View {
     }
 
     private func openDeepLink(_ url: URL) {
-        guard let itemID = SharedItemDeepLink.itemID(from: url) else {
-            isShowingDeepLinkUnavailable = true
-            return
-        }
-
         reloadLibrary()
-        guard savedItems.contains(where: { $0.id == itemID }) else {
+        switch SharedItemDeepLink.resolve(url, against: savedItems) {
+        case .open(let itemID):
+            navigationPath = [itemID]
+        case .unavailable:
             navigationPath.removeAll()
             isShowingDeepLinkUnavailable = true
-            return
         }
-
-        navigationPath = [itemID]
     }
 
     private func createCategory() {
@@ -657,6 +648,7 @@ private struct SettingsView: View {
         .toolbar(.visible, for: .navigationBar)
         .onAppear {
             reminderAuthorizationStatus = reminderService.authorizationStatus
+            isReminderPromptEnabled = SharedGatherLocalization.isReminderPromptEnabled
         }
         .alert(
             copy.clearAllItemsChoiceTitle,
@@ -718,6 +710,21 @@ private struct SettingsView: View {
         case .fullAccess:
             Label(copy.reminderAccessGrantedTitle, systemImage: "checkmark.circle")
                 .foregroundStyle(.green)
+        case .writeOnly:
+            Label(copy.reminderAccessWriteOnlyTitle, systemImage: "pencil.circle")
+                .foregroundStyle(.orange)
+
+            Text(copy.reminderAccessWriteOnlyMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button {
+                guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                UIApplication.shared.open(url)
+            } label: {
+                Label(copy.reminderAccessOpenSettingsTitle, systemImage: "gear")
+            }
+
         case .denied, .restricted:
             Text(copy.reminderAccessDeniedMessage)
                 .font(.footnote)
@@ -817,6 +824,8 @@ private struct Copy {
     var reminderAccessSectionTitle: String { text("settings.reminder.access.title") }
     var reminderAccessRequestTitle: String { text("settings.reminder.access.request") }
     var reminderAccessGrantedTitle: String { text("settings.reminder.access.granted") }
+    var reminderAccessWriteOnlyTitle: String { text("settings.reminder.access.writeonly") }
+    var reminderAccessWriteOnlyMessage: String { text("settings.reminder.access.writeonly.message") }
     var reminderAccessDeniedMessage: String { text("settings.reminder.access.denied.message") }
     var reminderAccessOpenSettingsTitle: String { text("settings.reminder.access.open.settings") }
     var exportBackupTitle: String { text("backup.export") }
@@ -1860,9 +1869,7 @@ private struct SavedItemRow: View {
     }
 
     var body: some View {
-        NavigationLink {
-            SavedItemDetailView(copy: copy, item: item, onDelete: onDetailDelete)
-        } label: {
+        NavigationLink(value: item.id) {
             HStack(alignment: .top, spacing: 12) {
                 SavedItemThumbnail(item: item, fallbackIconName: iconName)
 

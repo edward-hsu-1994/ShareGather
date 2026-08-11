@@ -69,6 +69,18 @@ func unavailableAuthorizationDoesNotAttemptToSave(
     }
     #expect(eventStore.requestCount == 0)
     #expect(eventStore.savedPayload == nil)
+
+}
+
+@MainActor
+@Test func writeOnlyAccessAllowsSaving() async throws {
+    let eventStore = TestReminderEventStore(authorizationStatus: .writeOnly)
+    let service = ReminderService(eventStore: eventStore, calendar: .current)
+
+    try await service.createReminder(from: makeDraft())
+
+    #expect(eventStore.requestCount == 0)
+    #expect(eventStore.savedPayload != nil)
 }
 
 @MainActor

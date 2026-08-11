@@ -47,3 +47,19 @@ public enum SharedItemDeepLink {
         return itemID
     }
 }
+
+/// Resolves a deep link against the current library snapshot without touching SwiftUI state.
+public enum DeepLinkOutcome: Equatable, Sendable {
+    case open(UUID)
+    case unavailable
+}
+
+extension SharedItemDeepLink {
+    /// Pure decision: given a URL and the currently known items, returns the routing outcome.
+    /// `unavailable` covers malformed URLs and references to items that no longer exist.
+    public static func resolve(_ url: URL, against items: [SharedItem]) -> DeepLinkOutcome {
+        guard let itemID = itemID(from: url) else { return .unavailable }
+        guard items.contains(where: { $0.id == itemID }) else { return .unavailable }
+        return .open(itemID)
+    }
+}

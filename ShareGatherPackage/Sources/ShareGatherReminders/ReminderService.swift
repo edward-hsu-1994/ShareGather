@@ -25,6 +25,7 @@ public enum ReminderAuthorizationStatus: Equatable, Sendable {
     case restricted
     case denied
     case fullAccess
+    case writeOnly
 }
 
 public enum ReminderCreationError: Error, Equatable, Sendable {
@@ -88,8 +89,9 @@ public final class ReminderService {
 
     private func ensureWriteAccess() async throws {
         switch eventStore.authorizationStatus {
-        case .fullAccess:
+        case .fullAccess, .writeOnly:
             return
+
         case .restricted:
             throw ReminderCreationError.accessRestricted
         case .denied:
@@ -136,15 +138,13 @@ protocol ReminderEventStore: AnyObject {
     func requestFullAccess() async throws -> Bool
     func save(_ payload: ReminderPayload) throws
 }
-
-struct ReminderPayload: Equatable {
+struct ReminderPayload: Equatable, Sendable {
     let title: String
     let notes: String?
     let deepLinkURL: URL
     let scheduledDateComponents: DateComponents
     let alarmDate: Date
 }
-
 enum ReminderEventStoreError: Error {
     case noDefaultCalendar
     case fullAccessAPIUnavailable
@@ -157,7 +157,6 @@ private final class EventKitReminderEventStore: ReminderEventStore {
     init(eventStore: EKEventStore = EKEventStore()) {
         self.eventStore = eventStore
     }
-
     var authorizationStatus: ReminderAuthorizationStatus {
         switch EKEventStore.authorizationStatus(for: .reminder) {
         case .notDetermined:
@@ -166,8 +165,10 @@ private final class EventKitReminderEventStore: ReminderEventStore {
             return .restricted
         case .denied:
             return .denied
-        case .fullAccess, .writeOnly:
+        case .fullAccess:
             return .fullAccess
+        case .writeOnly:
+            return .writeOnly
         @unknown default:
             return .denied
         }

@@ -53,6 +53,7 @@ final class ShareViewController: UIViewController {
     private var reminderPromptMessage: String { text("reminder.prompt.message") }
     private var reminderNotNowTitle: String { text("reminder.prompt.not.now") }
     private var reminderSetTitle: String { text("reminder.prompt.set") }
+    private var reminderDontAskAgainTitle: String { text("reminder.prompt.dont.ask.again") }
     private var reminderFormTitle: String { text("reminder.form.title") }
     private var reminderTitleLabel: String { text("reminder.form.reminder.title") }
     private var reminderNotesLabel: String { text("reminder.form.notes") }
@@ -504,11 +505,11 @@ final class ShareViewController: UIViewController {
     }
 
     private func showReminderPrompt(for item: SharedItem) {
-        guard SharedGatherLocalization.isReminderPromptEnabled else {
-            completeRequest()
-            return
-        }
-        DispatchQueue.main.async {
+        Task { @MainActor in
+            guard SharedGatherLocalization.isReminderPromptEnabled else {
+                completeRequest()
+                return
+            }
             self.activityIndicator.stopAnimating()
             self.statusLabel.text = self.savedTitle
 
@@ -523,7 +524,7 @@ final class ShareViewController: UIViewController {
             alert.addAction(UIAlertAction(title: self.reminderSetTitle, style: .default) { [weak self] _ in
                 self?.presentReminderForm(for: item)
             })
-            alert.addAction(UIAlertAction(title: self.text("reminder.prompt.dont.ask.again"), style: .default) { [weak self] _ in
+            alert.addAction(UIAlertAction(title: self.reminderDontAskAgainTitle, style: .default) { [weak self] _ in
                 SharedGatherLocalization.setReminderPromptEnabled(false)
                 self?.completeRequest()
             })
@@ -608,6 +609,8 @@ final class ShareViewController: UIViewController {
             guard let self else { return }
             do {
                 try await reminderService.createReminder(from: draft)
+                isCreatingReminder = false
+                form?.setSubmitting(false)
                 dismiss(animated: true) {
                     self.showReminderCreated()
                 }
@@ -786,6 +789,7 @@ private final class ReminderFormViewController: UIViewController {
         titleField.clearButtonMode = .whileEditing
         titleField.returnKeyType = .done
         titleField.accessibilityLabel = strings.reminderTitle
+        titleField.accessibilityIdentifier = "reminder.title"
         titleField.addTarget(self, action: #selector(titleChanged), for: .editingChanged)
 
         notesView.text = initialNotes
@@ -793,17 +797,21 @@ private final class ReminderFormViewController: UIViewController {
         notesView.adjustsFontForContentSizeCategory = true
         notesView.backgroundColor = .secondarySystemGroupedBackground
         notesView.layer.cornerRadius = 10
-        notesView.layer.borderWidth = 1 / UIScreen.main.scale
+        notesView.layer.borderWidth = 1 / UITraitCollection.current.displayScale
         notesView.layer.borderColor = UIColor.separator.cgColor
         notesView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
         notesView.accessibilityLabel = strings.notes
+        notesView.accessibilityIdentifier = "reminder.notes"
 
         datePicker.datePickerMode = .dateAndTime
-        datePicker.preferredDatePickerStyle = .compact
+        datePicker.preferredDatePickerStyle = .inline
+        // intentional: datePicker uses the in-app language, not the regional locale,
+        // so date formatting matches the rest of the UI regardless of device region.
         datePicker.locale = Locale(identifier: localeIdentifier)
         datePicker.minimumDate = Date()
         datePicker.date = max(initialDate, Date())
         datePicker.accessibilityLabel = strings.date
+        datePicker.accessibilityIdentifier = "reminder.date"
 
         let scrollView = UIScrollView()
         scrollView.keyboardDismissMode = .interactive

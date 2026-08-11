@@ -27,3 +27,38 @@ func sharedItemDeepLinkRejectsNoncanonicalURLs(urlString: String) throws {
 
     #expect(SharedItemDeepLink.itemID(from: url) == nil)
 }
+
+@Test func deepLinkResolveOpensKnownItem() throws {
+    let id = try #require(UUID(uuidString: "B4CD262E-6D83-47B0-8218-DBECFAF51D27"))
+    let item = makeStubItem(id: id)
+    let url = SharedItemDeepLink.url(for: id)
+
+    #expect(SharedItemDeepLink.resolve(url, against: [item]) == .open(id))
+}
+
+@Test func deepLinkResolveReturnsUnavailableForUnknownItem() throws {
+    let knownID = try #require(UUID(uuidString: "B4CD262E-6D83-47B0-8218-DBECFAF51D27"))
+    let referencedID = try #require(UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE"))
+    let item = makeStubItem(id: knownID)
+    let url = SharedItemDeepLink.url(for: referencedID)
+
+    #expect(SharedItemDeepLink.resolve(url, against: [item]) == .unavailable)
+}
+
+@Test func deepLinkResolveReturnsUnavailableForMalformedURL() throws {
+    let url = try #require(URL(string: "https://example.com/"))
+
+    #expect(SharedItemDeepLink.resolve(url, against: []) == .unavailable)
+}
+
+@Test func deepLinkResolveReturnsUnavailableForEmptyLibrary() throws {
+    let id = try #require(UUID(uuidString: "B4CD262E-6D83-47B0-8218-DBECFAF51D27"))
+    let url = SharedItemDeepLink.url(for: id)
+
+    #expect(SharedItemDeepLink.resolve(url, against: []) == .unavailable)
+}
+
+private func makeStubItem(id: UUID) -> SharedItem {
+    SharedItem(id: id, kind: .text, value: "stub")
+}
+

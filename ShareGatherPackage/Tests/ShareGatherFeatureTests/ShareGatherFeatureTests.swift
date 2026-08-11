@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 import ZIPFoundation
 @testable import ShareGatherFeature
 import ShareGatherStorage
@@ -124,7 +125,7 @@ import ShareGatherStorage
     try archive.addEntry(
         with: "unexpected.txt",
         type: .file,
-        uncompressedSize: Int64(unexpected.count),
+        uncompressedSize: UInt32(truncatingIfNeeded: unexpected.count),
         compressionMethod: .none
     ) { position, size in
         unexpected.subdata(in: position..<(position + size))
