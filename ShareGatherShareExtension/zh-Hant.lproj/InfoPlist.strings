@@ -1,1 +1,3 @@
 "CFBundleDisplayName" = "儲存到ShareGather";
+"NSRemindersFullAccessUsageDescription" = "當你選擇為收藏建立閱讀提醒時，ShareGather 需要取用「提醒事項」。";
+"NSRemindersUsageDescription" = "當你選擇為收藏建立閱讀提醒時，ShareGather 需要取用「提醒事項」。";
