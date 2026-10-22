@@ -25,6 +25,10 @@ All user-facing strings require English, Traditional Chinese, and Simplified Chi
 
 New third-party dependencies require explicit user approval. Prefer Apple frameworks where possible. When a dependency changes, commit the relevant Swift Package lockfiles.
 
+## Thumbnail Loading
+
+Preview loading short-circuits before initializing `SharedLibraryStore` when an item has no image or thumbnail reference. This avoids shared-container filesystem work for items without media while preserving the normal lookup path for referenced assets.
+
 ## Verification
 
 - Run `git diff --check` before committing.

@@ -1839,6 +1839,27 @@ private struct SavedItemRow: View {
     }
 }
 
+/**
+ Loads a saved item's image or thumbnail without opening the shared store
+ when the item has no referenced media.
+
+ - Parameters:
+   - item: Saved content. Image items use their image asset; other items use their thumbnail when present.
+   - storeFactory: Creates the shared library store after a media reference is found. Defaults to the app's shared store.
+ - Returns: Media bytes, or `nil` when no media is referenced, the store cannot be created, or the file is unavailable.
+ */
+func loadSavedItemPreviewData(
+    for item: SharedItem,
+    storeFactory: () throws -> SharedLibraryStore = { try SharedLibraryStore() }
+) -> Data? {
+    guard item.kind == .image || item.thumbnailFilename != nil else { return nil }
+    guard let store = try? storeFactory() else { return nil }
+
+    return item.kind == .image
+        ? store.imageData(for: item)
+        : store.thumbnailData(for: item)
+}
+
 private struct SavedItemThumbnail: View {
     let item: SharedItem
     let fallbackIconName: String
@@ -1862,11 +1883,7 @@ private struct SavedItemThumbnail: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .accessibilityHidden(true)
         .task {
-            guard let store = try? SharedLibraryStore() else { return }
-            let data = item.kind == .image
-                ? store.imageData(for: item)
-                : store.thumbnailData(for: item)
-            image = data.flatMap(UIImage.init(data:))
+            image = loadSavedItemPreviewData(for: item).flatMap(UIImage.init(data:))
         }
     }
 }

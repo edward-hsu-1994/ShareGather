@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 import ZIPFoundation
 @testable import ShareGatherFeature
 import ShareGatherStorage
@@ -124,7 +125,7 @@ import ShareGatherStorage
     try archive.addEntry(
         with: "unexpected.txt",
         type: .file,
-        uncompressedSize: Int64(unexpected.count),
+        uncompressedSize: UInt32(unexpected.count),
         compressionMethod: .none
     ) { position, size in
         unexpected.subdata(in: position..<(position + size))
@@ -136,4 +137,46 @@ import ShareGatherStorage
         try destination.importBackup(at: backupURL, mode: .replace)
     }
     #expect(try destination.loadItems().map(\.id) == [existing.id])
+}
+@Test("Preview loading avoids storage when no media is referenced")
+func previewLoadingSkipsStorageWhenNoMediaIsReferenced() {
+    let items = [
+        SharedItem(kind: .text, value: "Saved text"),
+        SharedItem(kind: .url, value: "https://example.com")
+    ]
+    var storeFactoryCalls = 0
+
+    for item in items {
+        let data = loadSavedItemPreviewData(for: item) {
+            storeFactoryCalls += 1
+            throw CocoaError(.fileNoSuchFile)
+        }
+        #expect(data == nil)
+    }
+
+    #expect(storeFactoryCalls == 0)
+}
+
+@Test("Preview loading reads referenced image and thumbnail data")
+func previewLoadingReadsReferencedMedia() throws {
+    let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let store = try SharedLibraryStore(baseDirectory: directory)
+    let imageItem = try store.saveItem(
+        kind: .image,
+        value: "image",
+        categoryID: nil,
+        imageData: Data([1, 2, 3])
+    )
+    let urlItem = try store.saveItem(
+        kind: .url,
+        value: "https://example.com",
+        categoryID: nil,
+        thumbnailData: Data([4, 5, 6])
+    )
+
+    #expect(loadSavedItemPreviewData(for: imageItem, storeFactory: { store }) == Data([1, 2, 3]))
+    #expect(loadSavedItemPreviewData(for: urlItem, storeFactory: { store }) == Data([4, 5, 6]))
 }
