@@ -30,9 +30,6 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:ShareGather.xctestplan">
-         </TestPlanReference>
-         <TestPlanReference
             reference = "container:ShareGather/ShareGather.xctestplan"
             default = "YES">
          </TestPlanReference>
