@@ -11,7 +11,9 @@ Images/
 Thumbnails/
 ```
 
-`SharedLibraryStore` owns item/category CRUD, category reordering, pin updates, batch operations, clearing content, and backup operations. Normal JSON writes use atomic writes. Existing JSON must remain decodable when storage fields evolve; `isPinned` defaults to `false` when absent and item dates support the current ISO-8601 representation plus the legacy numeric representation.
+`SharedLibraryStore` owns item/category CRUD, category reordering, pin updates, read-status updates, batch operations, clearing content, and backup operations. Normal JSON writes use atomic writes. Existing JSON must remain decodable when storage fields evolve; `isPinned` and `isRead` default to `false` when absent and item dates support the current ISO-8601 representation plus the legacy numeric representation.
+
+`updateItemReadStatus(id:isRead:)` rewrites one item under the store lock while preserving every other stored field, including category assignment, pin state, and media references. Every other item rebuild path — category update, batch category move, pin update, keeping items when a category is deleted, and backup restore — carries `isRead` through unchanged.
 
 Deleting an item removes its owned image and thumbnail when present. Clearing all saved content removes item metadata and both media directories; it can optionally retain categories.
 
@@ -27,7 +29,7 @@ Images/
 Thumbnails/
 ```
 
-The manifest uses identifier `com.sharegather.backup`, version `1`, creation time, and item/media counts. Backups include categories and order, items, pin state, original content, images, and thumbnails. The app-language preference is not exported.
+The manifest uses identifier `com.sharegather.backup`, version `1`, creation time, and item/media counts. Backups include categories and order, items, pin state, read state, original content, images, and thumbnails. The app-language preference is not exported.
 
 Export stages a snapshot in temporary storage, creates a ZIP, then opens the iOS system share sheet. Backup archives are not encrypted.
 

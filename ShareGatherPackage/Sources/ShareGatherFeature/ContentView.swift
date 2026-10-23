@@ -75,6 +75,17 @@ public struct ContentView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     OfflinePrivacyBanner(copy: copy)
 
+                    if !savedItems.isEmpty {
+                        ReadingListCard(
+                            copy: copy,
+                            unreadCount: unreadItemCount,
+                            items: savedItems,
+                            onDeleteItem: deleteItem,
+                            onRecategorize: requestRecategorization,
+                            onUpdateReadStatus: updateItemReadStatus
+                        )
+                    }
+
                     CategoryOverview(
                         copy: copy,
                         categories: categories,
@@ -362,9 +373,22 @@ public struct ContentView: View {
         reloadLibrary()
     }
 
+    private var unreadItemCount: Int {
+        savedItems.count { !$0.isRead }
+    }
+
     private func updateItemPin(_ item: SharedItem, isPinned: Bool) -> SharedItem? {
         guard let store = try? SharedLibraryStore(),
               let updatedItem = try? store.updateItemPin(id: item.id, isPinned: isPinned) else {
+            return nil
+        }
+        reloadLibrary()
+        return updatedItem
+    }
+
+    private func updateItemReadStatus(_ item: SharedItem, isRead: Bool) -> SharedItem? {
+        guard let store = try? SharedLibraryStore(),
+              let updatedItem = try? store.updateItemReadStatus(id: item.id, isRead: isRead) else {
             return nil
         }
         reloadLibrary()
@@ -740,6 +764,17 @@ private struct Copy {
     var clearAllItemsAndCategoriesTitle: String { text("settings.clear.items.delete.categories") }
     var pinItemTitle: String { text("item.pin") }
     var unpinItemTitle: String { text("item.unpin") }
+    var markItemReadTitle: String { text("item.mark.read") }
+    var markItemUnreadTitle: String { text("item.mark.unread") }
+    var itemStatusReadTitle: String { text("item.status.read") }
+    var itemStatusUnreadTitle: String { text("item.status.unread") }
+    var readingListTitle: String { text("reading.list.title") }
+    var readingListFilterTitle: String { text("reading.list.filter.title") }
+    var readingListFilterAllTitle: String { text("reading.list.filter.all") }
+    var readingListFilterUnreadTitle: String { text("reading.list.filter.unread") }
+    var readingListFilterReadTitle: String { text("reading.list.filter.read") }
+    var readingListEmptyUnreadTitle: String { text("reading.list.empty.unread") }
+    var readingListEmptyReadTitle: String { text("reading.list.empty.read") }
     var selectTitle: String { text("common.select") }
     var batchMoveTitle: String { text("item.batch.move") }
     var batchDeleteTitle: String { text("item.batch.delete") }
@@ -839,6 +874,10 @@ private struct Copy {
 
     func itemCount(_ count: Int) -> String {
         text("library.item.count").replacingOccurrences(of: "%d", with: "\(count)")
+    }
+
+    func readingListUnreadCount(_ count: Int) -> String {
+        text("reading.list.unread.count").replacingOccurrences(of: "%d", with: "\(count)")
     }
 
     func deleteCategoryConfirmationMessage(categoryName: String, deletesItems: Bool) -> String {
@@ -989,6 +1028,237 @@ private struct RecentSavedItemsSection: View {
                     )
                 }
             }
+        }
+    }
+}
+
+/// Selects which saved items appear in the reading list.
+private enum ReadingListFilter: String, CaseIterable, Identifiable {
+    /// Shows both read and unread items.
+    case all
+    /// Shows items that have not been marked as read.
+    case unread
+    /// Shows items that have been marked as read.
+    case read
+
+    var id: String { rawValue }
+
+    /// Returns whether an item belongs in the selected filter.
+    /// - Parameter item: The saved item whose status is checked.
+    /// - Returns: `true` when this filter includes the item's read state.
+    func includes(_ item: SharedItem) -> Bool {
+        switch self {
+        case .all: return true
+        case .unread: return !item.isRead
+        case .read: return item.isRead
+        }
+    }
+}
+
+/// Home-screen entry point for browsing saved items by read status.
+private struct ReadingListCard: View {
+    let copy: Copy
+    let unreadCount: Int
+    let items: [SharedItem]
+    let onDeleteItem: (SharedItem) -> Void
+    let onRecategorize: (SharedItem) -> Void
+    let onUpdateReadStatus: (SharedItem, Bool) -> SharedItem?
+
+    var body: some View {
+        NavigationLink {
+            ReadingListView(
+                copy: copy,
+                items: items,
+                onDeleteItem: onDeleteItem,
+                onRecategorize: onRecategorize,
+                onUpdateReadStatus: onUpdateReadStatus
+            )
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "bookmark.fill")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.blue)
+                    .frame(width: 34, height: 34)
+                    .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(copy.readingListTitle)
+                        .font(.subheadline.weight(.semibold))
+
+                    Text(copy.readingListUnreadCount(unreadCount))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: unreadCount == 0 ? "checkmark.circle.fill" : "circle.fill")
+                    .foregroundStyle(unreadCount == 0 ? .green : .blue)
+            }
+            .padding(14)
+            .background(.background, in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(.quaternary, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(copy.readingListUnreadCount(unreadCount))
+        .accessibilityIdentifier("reading-list.entry")
+    }
+}
+
+/// Displays saved items with filters and actions for changing read status.
+private struct ReadingListView: View {
+    let copy: Copy
+    let items: [SharedItem]
+    let onDeleteItem: (SharedItem) -> Void
+    let onRecategorize: (SharedItem) -> Void
+    let onUpdateReadStatus: (SharedItem, Bool) -> SharedItem?
+    @State private var displayedItems: [SharedItem]
+    @State private var filter: ReadingListFilter = .all
+
+    init(
+        copy: Copy,
+        items: [SharedItem],
+        onDeleteItem: @escaping (SharedItem) -> Void,
+        onRecategorize: @escaping (SharedItem) -> Void,
+        onUpdateReadStatus: @escaping (SharedItem, Bool) -> SharedItem?
+    ) {
+        self.copy = copy
+        self.items = items
+        self.onDeleteItem = onDeleteItem
+        self.onRecategorize = onRecategorize
+        self.onUpdateReadStatus = onUpdateReadStatus
+        _displayedItems = State(initialValue: items)
+    }
+
+    private var filteredItems: [SharedItem] {
+        orderedSavedItems(displayedItems.filter(filter.includes))
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                Picker(copy.readingListFilterTitle, selection: $filter) {
+                    Text(copy.readingListFilterAllTitle).tag(ReadingListFilter.all)
+                    Text(copy.readingListFilterUnreadTitle).tag(ReadingListFilter.unread)
+                    Text(copy.readingListFilterReadTitle).tag(ReadingListFilter.read)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("reading-list.filter")
+
+                if filteredItems.isEmpty {
+                    ReadingListEmptyState(
+                        iconName: filter == .read ? "circle" : "checkmark.circle",
+                        text: filter == .read
+                            ? copy.readingListEmptyReadTitle
+                            : copy.readingListEmptyUnreadTitle
+                    )
+                } else {
+                    ForEach(filteredItems) { item in
+                        ReadingListItemRow(
+                            copy: copy,
+                            item: item,
+                            onDetailDelete: onDeleteItem,
+                            onRecategorize: onRecategorize,
+                            onToggleReadStatus: { item in
+                                guard let updatedItem = onUpdateReadStatus(item, !item.isRead),
+                                      let index = displayedItems.firstIndex(where: { $0.id == updatedItem.id }) else {
+                                    return
+                                }
+                                displayedItems[index] = updatedItem
+                            }
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle(copy.readingListTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .onChange(of: items) { _, newItems in
+            displayedItems = newItems
+        }
+    }
+}
+
+/// Empty-state copy shown when the selected reading-list filter has no items.
+private struct ReadingListEmptyState: View {
+    let iconName: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: iconName)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+/// A saved-item row with a visible read-status cue and status toggle action.
+private struct ReadingListItemRow: View {
+    let copy: Copy
+    let item: SharedItem
+    let onDetailDelete: (SharedItem) -> Void
+    let onRecategorize: (SharedItem) -> Void
+    let onToggleReadStatus: (SharedItem) -> Void
+    @State private var itemPendingDeletion: SharedItem?
+
+    var body: some View {
+        SavedItemRow(
+            copy: copy,
+            item: item,
+            onDelete: { item in
+                itemPendingDeletion = item
+            },
+            onDetailDelete: onDetailDelete,
+            onRecategorize: onRecategorize,
+            readStatusAction: { onToggleReadStatus(item) }
+        )
+        .accessibilityIdentifier("reading-list.item.\(item.id.uuidString)")
+        .overlay(alignment: .topLeading) {
+            Image(systemName: item.isRead ? "checkmark.circle.fill" : "circle.fill")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(item.isRead ? Color.secondary : Color.blue)
+                .padding(8)
+                .background(.thinMaterial, in: Circle())
+                .padding(6)
+                .accessibilityLabel(item.isRead ? copy.itemStatusReadTitle : copy.itemStatusUnreadTitle)
+        }
+        .alert(copy.deleteConfirmationTitle, isPresented: Binding(
+            get: { itemPendingDeletion != nil },
+            set: { isPresented in
+                if !isPresented {
+                    itemPendingDeletion = nil
+                }
+            }
+        )) {
+            Button(copy.cancelTitle, role: .cancel) {
+                itemPendingDeletion = nil
+            }
+            Button(copy.deleteTitle, role: .destructive) {
+                if let item = itemPendingDeletion {
+                    onDetailDelete(item)
+                }
+                itemPendingDeletion = nil
+            }
+        } message: {
+            Text(copy.deleteConfirmationMessage)
         }
     }
 }
@@ -1718,6 +1988,7 @@ private struct SavedItemRow: View {
     let onDetailDelete: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
     let pinAction: (() -> Void)?
+    let readStatusAction: (() -> Void)?
     @State private var isShowingShareSheet = false
 
     init(
@@ -1726,7 +1997,8 @@ private struct SavedItemRow: View {
         onDelete: @escaping (SharedItem) -> Void,
         onDetailDelete: @escaping (SharedItem) -> Void,
         onRecategorize: @escaping (SharedItem) -> Void,
-        pinAction: (() -> Void)? = nil
+        pinAction: (() -> Void)? = nil,
+        readStatusAction: (() -> Void)? = nil
     ) {
         self.copy = copy
         self.item = item
@@ -1734,6 +2006,7 @@ private struct SavedItemRow: View {
         self.onDetailDelete = onDetailDelete
         self.onRecategorize = onRecategorize
         self.pinAction = pinAction
+        self.readStatusAction = readStatusAction
     }
 
     private var iconName: String {
@@ -1798,6 +2071,16 @@ private struct SavedItemRow: View {
                 }
             }
 
+            if let readStatusAction {
+                Button(action: readStatusAction) {
+                    Label(
+                        item.isRead ? copy.markItemUnreadTitle : copy.markItemReadTitle,
+                        systemImage: item.isRead ? "circle" : "checkmark.circle"
+                    )
+                }
+                .accessibilityIdentifier("reading-list.status.context.\(item.id.uuidString)")
+            }
+
             Button {
                 onRecategorize(item)
             } label: {
@@ -1820,6 +2103,17 @@ private struct SavedItemRow: View {
             ShareSheet(activityItems: shareActivityItems(for: item))
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let readStatusAction {
+                Button(action: readStatusAction) {
+                    Label(
+                        item.isRead ? copy.markItemUnreadTitle : copy.markItemReadTitle,
+                        systemImage: item.isRead ? "circle" : "checkmark.circle"
+                    )
+                }
+                .tint(item.isRead ? .gray : .green)
+                .accessibilityIdentifier("reading-list.status.swipe.\(item.id.uuidString)")
+            }
+
             Button {
                 onRecategorize(item)
             } label: {
