@@ -34,6 +34,7 @@ ShareGather is a local-first iPhone app for saving URLs, text, and images from t
 - Select multiple items in category and Uncategorized views to move or delete them.
 - Long-press a saved item to pin it when available, move it, share it, or delete it.
 - Show recent saved items on the home screen.
+- Search the whole library on the home screen, matching titles, descriptions, URLs, text, original shared content, and category names.
 - Preserve original shared content while optionally enriching URLs with a title, description/source, and thumbnail.
 - Open, share, or delete a saved item from its detail view.
 - Read the in-app privacy policy and open the project repository from Settings.
@@ -75,6 +76,7 @@ ShareGather is intentionally local-first:
 - No required server or cloud storage.
 - No analytics, advertising, or tracking integrations.
 - Saved content belongs to the user and stays in the local App Group container.
+- Search runs entirely on the device over already-saved content; queries are never sent anywhere.
 
 For shared URLs, iOS Link Presentation may optionally request preview metadata such as a title or thumbnail. This can contact the linked website, but saving the original URL does not depend on metadata loading.
 
@@ -150,6 +152,7 @@ xcodebuildmcp device build-and-run \
 - Build and launch on a signed physical device when device testing is in scope.
 - Save URLs, text, and images through both sharing entry points.
 - Confirm saved items persist after relaunch and can be categorized, moved, pinned, shared, and deleted.
+- Search the library for a title, description, URL, text value, original shared content, and category name, confirm case-insensitive matching and category labels in results, and confirm the no-results state.
 - Confirm English, Traditional Chinese, Simplified Chinese, and System Default update the app and Share Extension.
 - Export a backup to Files or a cloud-drive app, then import it and verify both merge and replace behavior.
 - Confirm restored categories remain visible in the Share Extension.

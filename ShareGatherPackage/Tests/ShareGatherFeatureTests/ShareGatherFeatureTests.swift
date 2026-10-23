@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import ZIPFoundation
 @testable import ShareGatherFeature
@@ -127,7 +128,7 @@ import ShareGatherStorage
         uncompressedSize: Int64(unexpected.count),
         compressionMethod: .none
     ) { position, size in
-        unexpected.subdata(in: position..<(position + size))
+        unexpected.subdata(in: Int(position)..<(Int(position) + size))
     }
 
     let destination = try SharedLibraryStore(baseDirectory: destinationDirectory)
