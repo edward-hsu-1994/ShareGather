@@ -33,3 +33,5 @@ Images and thumbnails are referenced by filenames. A persisted item must retain 
 ## Dependency Boundary
 
 ZIPFoundation is used only by `SharedLibraryStore` for ZIP backup creation and extraction. It does not add a network service, account flow, or synchronization behavior.
+
+`LibrarySearch` is a pure in-memory matcher over already-loaded items and category names. It performs no file or network I/O.

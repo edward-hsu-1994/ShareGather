@@ -60,6 +60,7 @@ public struct ContentView: View {
     @State private var isShowingUncategorizedBatchDeleteConfirmation = false
     @State private var savedItems: [SharedItem] = []
     @State private var categories: [SharedCategory] = []
+    @State private var searchQuery: String = ""
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguage) ?? .english
@@ -69,65 +70,97 @@ public struct ContentView: View {
         Copy(language: language)
     }
 
+    private var trimmedSearchQuery: String {
+        LibrarySearch.normalizedQuery(searchQuery)
+    }
+
+    private var categoryNamesByID: [UUID: String] {
+        Dictionary(categories.map { ($0.id, $0.name) }, uniquingKeysWith: { _, latest in latest })
+    }
+
+    /// Matching items from every category plus Uncategorized, in the same order the
+    /// library lists use.
+    private var searchResultItems: [SharedItem] {
+        orderedSavedItems(
+            LibrarySearch.items(
+                in: savedItems,
+                matching: trimmedSearchQuery,
+                categoryNames: categoryNamesByID
+            )
+        )
+    }
+
     public var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    OfflinePrivacyBanner(copy: copy)
+                    if trimmedSearchQuery.isEmpty {
+                        OfflinePrivacyBanner(copy: copy)
 
-                    CategoryOverview(
-                        copy: copy,
-                        categories: categories,
-                        items: savedItems,
-                        onDelete: requestDelete,
-                        onDeleteItem: deleteItem,
-                        onRecategorize: requestRecategorization,
-                        onRecategorizeToCategory: recategorizeItem,
-                        onRenameCategory: requestRenameCategory,
-                        onDeleteCategory: requestDeleteCategory,
-                        onReorderCategories: {
-                            isShowingCategoryReordering = true
-                        },
-                        onUpdatePin: updateItemPin,
-                        onDeleteItems: deleteItems,
-                        onMoveItems: moveItems
-                    ) {
-                        newCategoryName = ""
-                        isShowingCreateCategory = true
-                    }
+                        CategoryOverview(
+                            copy: copy,
+                            categories: categories,
+                            items: savedItems,
+                            onDelete: requestDelete,
+                            onDeleteItem: deleteItem,
+                            onRecategorize: requestRecategorization,
+                            onRecategorizeToCategory: recategorizeItem,
+                            onRenameCategory: requestRenameCategory,
+                            onDeleteCategory: requestDeleteCategory,
+                            onReorderCategories: {
+                                isShowingCategoryReordering = true
+                            },
+                            onUpdatePin: updateItemPin,
+                            onDeleteItems: deleteItems,
+                            onMoveItems: moveItems
+                        ) {
+                            newCategoryName = ""
+                            isShowingCreateCategory = true
+                        }
 
-                    if savedItems.isEmpty {
-                        EmptyInboxView(copy: copy)
-                    } else {
-                        UncategorizedItemsSection(
+                        if savedItems.isEmpty {
+                            EmptyInboxView(copy: copy)
+                        } else {
+                            UncategorizedItemsSection(
+                                copy: copy,
+                                items: savedItems,
+                                onDelete: deleteItem,
+                                onRecategorize: requestRecategorization,
+                                isSelecting: $isSelectingUncategorized,
+                                selectedItemIDs: $selectedUncategorizedItemIDs
+                            )
+                        }
+
+                        RecentSavedItemsSection(
                             copy: copy,
                             items: savedItems,
-                            onDelete: deleteItem,
-                            onRecategorize: requestRecategorization,
-                            isSelecting: $isSelectingUncategorized,
-                            selectedItemIDs: $selectedUncategorizedItemIDs
+                            onDelete: requestDelete,
+                            onDeleteItem: deleteItem,
+                            onRecategorize: requestRecategorization
                         )
-                    }
 
-                    RecentSavedItemsSection(
-                        copy: copy,
-                        items: savedItems,
-                        onDelete: requestDelete,
-                        onDeleteItem: deleteItem,
-                        onRecategorize: requestRecategorization
-                    )
-
-                    if savedItems.isEmpty {
-                        ShareInstructionsCard(copy: copy) {
-                            isShowingInstructions = true
+                        if savedItems.isEmpty {
+                            ShareInstructionsCard(copy: copy) {
+                                isShowingInstructions = true
+                            }
                         }
+                    } else {
+                        SearchResultsSection(
+                            copy: copy,
+                            query: trimmedSearchQuery,
+                            items: searchResultItems,
+                            categories: categories,
+                            onDelete: requestDelete,
+                            onDeleteItem: deleteItem,
+                            onRecategorize: requestRecategorization
+                        )
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
             }
             .safeAreaInset(edge: .bottom) {
-                if isSelectingUncategorized {
+                if isSelectingUncategorized && trimmedSearchQuery.isEmpty {
                     ZStack {
                         HStack(spacing: 12) {
                             Button {
@@ -162,6 +195,12 @@ public struct ContentView: View {
                 }
             }
             .background(Color(uiColor: .systemGroupedBackground))
+            .searchable(
+                text: $searchQuery,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: Text(copy.searchPrompt)
+            )
+            .accessibilityIdentifier("library.search.field")
             .navigationTitle(copy.appName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -216,6 +255,11 @@ public struct ContentView: View {
             }
             .onChange(of: selectedLanguage) { _, _ in
                 syncLanguagePreference()
+            }
+            .onChange(of: trimmedSearchQuery) { _, query in
+                guard !query.isEmpty else { return }
+                selectedUncategorizedItemIDs.removeAll()
+                isSelectingUncategorized = false
             }
             .onChange(of: scenePhase) { _, newPhase in
                 handleScenePhaseChange(newPhase)
@@ -781,6 +825,10 @@ private struct Copy {
     var savedItemsTitle: String { text("library.saved.title") }
     var recentItemsTitle: String { text("library.recent.title") }
     var recentItemsEmpty: String { text("library.recent.empty") }
+    var searchPrompt: String { text("library.search.prompt") }
+    var searchResultsTitle: String { text("library.search.results.title") }
+    var searchNoResultsTitle: String { text("library.search.no.results.title") }
+    var searchCategoryLabel: String { text("library.search.category") }
     var uncategorizedTitle: String { text("library.uncategorized") }
     var savedImageTitle: String { text("library.saved.image") }
     var itemDetailTitle: String { text("library.item.detail") }
@@ -835,6 +883,10 @@ private struct Copy {
 
     func categoryContainsItemsMessage(_ count: Int) -> String {
         text("category.contains.message").replacingOccurrences(of: "%d", with: "\(count)")
+    }
+
+    func searchNoResultsMessage(_ query: String) -> String {
+        text("library.search.no.results.message").replacingOccurrences(of: "%@", with: query)
     }
 
     func itemCount(_ count: Int) -> String {
@@ -1575,6 +1627,83 @@ private struct SavedItemsList: View {
     }
 }
 
+/// Whole-library search results shown in place of the home presentation while the
+/// search field holds a non-empty query.
+private struct SearchResultsSection: View {
+    let copy: Copy
+    let query: String
+    let items: [SharedItem]
+    let categories: [SharedCategory]
+    let onDelete: (SharedItem) -> Void
+    let onDeleteItem: (SharedItem) -> Void
+    let onRecategorize: (SharedItem) -> Void
+
+    private var categoryNames: [UUID: String] {
+        Dictionary(categories.map { ($0.id, $0.name) }, uniquingKeysWith: { _, latest in latest })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(copy.searchResultsTitle)
+                .font(.headline)
+
+            if items.isEmpty {
+                SearchNoResultsView(copy: copy, query: query)
+            } else {
+                ForEach(items) { item in
+                    SavedItemRow(
+                        copy: copy,
+                        item: item,
+                        categoryLabel: item.categoryID.flatMap { categoryNames[$0] } ?? copy.uncategorizedTitle,
+                        onDelete: onDelete,
+                        onDetailDelete: onDeleteItem,
+                        onRecategorize: onRecategorize
+                    )
+                    .accessibilityIdentifier("library.search.result.\(item.id.uuidString)")
+                }
+            }
+        }
+    }
+}
+
+/// Localized empty-state explanation for a search with no matching saved items.
+private struct SearchNoResultsView: View {
+    let copy: Copy
+    let query: String
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 42, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 88, height: 88)
+                .background(Color.secondary.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(spacing: 8) {
+                Text(copy.searchNoResultsTitle)
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+
+                Text(copy.searchNoResultsMessage(query))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(18)
+        .background(.background, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(.quaternary, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("library.search.noResults")
+    }
+}
+
 private struct UncategorizedItemsSection: View {
     let copy: Copy
     let items: [SharedItem]
@@ -1714,6 +1843,7 @@ private struct SavedSection: Identifiable {
 private struct SavedItemRow: View {
     let copy: Copy
     let item: SharedItem
+    let categoryLabel: String?
     let onDelete: (SharedItem) -> Void
     let onDetailDelete: (SharedItem) -> Void
     let onRecategorize: (SharedItem) -> Void
@@ -1723,6 +1853,7 @@ private struct SavedItemRow: View {
     init(
         copy: Copy,
         item: SharedItem,
+        categoryLabel: String? = nil,
         onDelete: @escaping (SharedItem) -> Void,
         onDetailDelete: @escaping (SharedItem) -> Void,
         onRecategorize: @escaping (SharedItem) -> Void,
@@ -1730,6 +1861,7 @@ private struct SavedItemRow: View {
     ) {
         self.copy = copy
         self.item = item
+        self.categoryLabel = categoryLabel
         self.onDelete = onDelete
         self.onDetailDelete = onDetailDelete
         self.onRecategorize = onRecategorize
@@ -1777,6 +1909,14 @@ private struct SavedItemRow: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+                    }
+
+                    if let categoryLabel {
+                        Label(categoryLabel, systemImage: "folder")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .accessibilityLabel("\(copy.searchCategoryLabel): \(categoryLabel)")
                     }
 
                     Text(copy.formattedDate(item.createdAt))
