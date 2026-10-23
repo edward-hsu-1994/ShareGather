@@ -31,8 +31,10 @@ ShareGather is a local-first iPhone app for saving URLs, text, and images from t
 - Pin items within a category; pinned items appear at the top of that category.
 - Sort category and Uncategorized lists with pinned items first, then by saved time from newest to oldest; Recent saved items always use saved time only.
 - Move or delete individual items, including moving them back to Uncategorized.
+- Open the Reading List from the home screen to review saved items with All, Unread, and Read filters.
+- Mark a saved item as read or unread from its Reading List context menu, swipe action, and visible read-status cue; read state is stored on the device.
 - Select multiple items in category and Uncategorized views to move or delete them.
-- Long-press a saved item to pin it when available, move it, share it, or delete it.
+- Long-press a saved item to pin it when available, mark it read or unread in the Reading List, move it, share it, or delete it.
 - Show recent saved items on the home screen.
 - Preserve original shared content while optionally enriching URLs with a title, description/source, and thumbnail.
 - Open, share, or delete a saved item from its detail view.
@@ -58,7 +60,7 @@ Images/
 Thumbnails/
 ```
 
-Backups include categories and their order, item metadata, category assignments, pin state, original shared content, images, and URL thumbnails. The selected app language is not included.
+Backups include categories and their order, item metadata, category assignments, pin state, read state, original shared content, images, and URL thumbnails. The selected app language is not included.
 
 To restore a backup, choose **Import Backup** in Settings and select a ZIP file in the Files picker. ShareGather validates the backup identifier, supported format version, metadata structure, duplicate IDs, category references, and required media files before offering these choices:
 
@@ -106,7 +108,7 @@ For component ownership, persistence details, UI interaction rules, and developm
 
 All saved content is stored locally in the App Group container `group.com.sharegather.app`:
 
-- `saved-items.json` stores item metadata.
+- `saved-items.json` stores item metadata, including pin and read state.
 - `categories.json` stores categories and their order.
 - `Images/` stores saved images.
 - `Thumbnails/` stores cached URL thumbnails.
@@ -150,6 +152,7 @@ xcodebuildmcp device build-and-run \
 - Build and launch on a signed physical device when device testing is in scope.
 - Save URLs, text, and images through both sharing entry points.
 - Confirm saved items persist after relaunch and can be categorized, moved, pinned, shared, and deleted.
+- Confirm the Reading List filters All/Unread/Read correctly, the read-status cue updates after toggling an item, and read state survives relaunch.
 - Confirm English, Traditional Chinese, Simplified Chinese, and System Default update the app and Share Extension.
 - Export a backup to Files or a cloud-drive app, then import it and verify both merge and replace behavior.
 - Confirm restored categories remain visible in the Share Extension.

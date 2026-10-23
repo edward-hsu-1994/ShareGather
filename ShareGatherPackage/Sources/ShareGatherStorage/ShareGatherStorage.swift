@@ -52,6 +52,8 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
     public let createdAt: Date
     public let categoryID: UUID?
     public let isPinned: Bool
+    /// Whether the person has marked this saved item as read on this device.
+    public let isRead: Bool
 
     public init(
         id: UUID = UUID(),
@@ -63,7 +65,8 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         originalContent: SharedOriginalContent? = nil,
         createdAt: Date = Date(),
         categoryID: UUID? = nil,
-        isPinned: Bool = false
+        isPinned: Bool = false,
+        isRead: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -75,10 +78,11 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         self.createdAt = createdAt
         self.categoryID = categoryID
         self.isPinned = isPinned
+        self.isRead = isRead
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, value, title, description, thumbnailFilename, originalContent, createdAt, categoryID, isPinned
+        case id, kind, value, title, description, thumbnailFilename, originalContent, createdAt, categoryID, isPinned, isRead
     }
 
     public init(from decoder: Decoder) throws {
@@ -92,6 +96,7 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         originalContent = try container.decodeIfPresent(SharedOriginalContent.self, forKey: .originalContent)
         categoryID = try container.decodeIfPresent(UUID.self, forKey: .categoryID)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        isRead = try container.decodeIfPresent(Bool.self, forKey: .isRead) ?? false
         createdAt = try Self.decodeDate(from: container.superDecoder(forKey: .createdAt))
     }
 
@@ -106,6 +111,7 @@ public struct SharedItem: Codable, Equatable, Identifiable, Sendable {
         try container.encodeIfPresent(originalContent, forKey: .originalContent)
         try container.encode(categoryID, forKey: .categoryID)
         try container.encode(isPinned, forKey: .isPinned)
+        try container.encode(isRead, forKey: .isRead)
 
         let formatter = ISO8601DateFormatter()
 		let dateContainer = container.superEncoder(forKey: .createdAt)
@@ -424,7 +430,8 @@ public final class SharedLibraryStore: @unchecked Sendable {
             originalContent: current.originalContent,
             createdAt: current.createdAt,
             categoryID: categoryID,
-            isPinned: current.isPinned
+            isPinned: current.isPinned,
+            isRead: current.isRead
         )
         items[index] = updated
         try writeUnlocked(items, to: itemsURL)
@@ -452,7 +459,44 @@ public final class SharedLibraryStore: @unchecked Sendable {
             originalContent: current.originalContent,
             createdAt: current.createdAt,
             categoryID: current.categoryID,
-            isPinned: isPinned
+            isPinned: isPinned,
+            isRead: current.isRead
+        )
+        items[index] = updated
+        try writeUnlocked(items, to: itemsURL)
+        return updated
+    }
+
+    /// Updates an item's read state without changing its other stored fields.
+    /// The mutation is serialized with the store lock and atomically persisted.
+    /// - Parameters:
+    ///   - id: The identifier of the item to update.
+    ///   - isRead: `true` when the item is marked read; `false` marks it unread.
+    /// - Returns: The updated item with its other metadata and media references preserved.
+    /// - Throws: `SharedLibraryError.itemNotFound` when no item has the supplied identifier, or a storage error if reading or writing fails.
+    @discardableResult
+    public func updateItemReadStatus(id: UUID, isRead: Bool) throws -> SharedItem {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var items = try readUnlocked([SharedItem].self, from: itemsURL, missingValue: [])
+        guard let index = items.firstIndex(where: { $0.id == id }) else {
+            throw SharedLibraryError.itemNotFound
+        }
+
+        let current = items[index]
+        let updated = SharedItem(
+            id: current.id,
+            kind: current.kind,
+            value: current.value,
+            title: current.title,
+            description: current.description,
+            thumbnailFilename: current.thumbnailFilename,
+            originalContent: current.originalContent,
+            createdAt: current.createdAt,
+            categoryID: current.categoryID,
+            isPinned: current.isPinned,
+            isRead: isRead
         )
         items[index] = updated
         try writeUnlocked(items, to: itemsURL)
@@ -493,7 +537,8 @@ public final class SharedLibraryStore: @unchecked Sendable {
                 originalContent: item.originalContent,
                 createdAt: item.createdAt,
                 categoryID: categoryID,
-                isPinned: item.isPinned
+                isPinned: item.isPinned,
+                isRead: item.isRead
             )
             updatedItems.append(updated)
             return updated
@@ -593,7 +638,8 @@ public final class SharedLibraryStore: @unchecked Sendable {
                     originalContent: item.originalContent,
                     createdAt: item.createdAt,
                     categoryID: nil,
-                    isPinned: item.isPinned
+                    isPinned: item.isPinned,
+                    isRead: item.isRead
                 )
             }
         }
@@ -945,7 +991,8 @@ public final class SharedLibraryStore: @unchecked Sendable {
                         originalContent: originalContent,
                         createdAt: original.createdAt,
                         categoryID: original.categoryID,
-                        isPinned: original.isPinned
+                        isPinned: original.isPinned,
+                        isRead: original.isRead
                     )
                 )
             }

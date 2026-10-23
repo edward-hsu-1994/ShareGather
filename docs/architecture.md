@@ -23,7 +23,7 @@ The selected language is stored in the App Group preference so the main app and 
 
 ## Core Models
 
-- `SharedItem`: URL, text, or image record with display metadata, category assignment, creation date, thumbnail reference, original payload, and pin state.
+- `SharedItem`: URL, text, or image record with display metadata, category assignment, creation date, thumbnail reference, original payload, pin state, and read state.
 - `SharedCategory`: ID, name, and creation date. The stored array order is the category display order.
 - `SharedOriginalContent`: original value, kind, optional source text, and optional image asset reference.
 - `SharedItemKind`: `url`, `text`, or `image`.
